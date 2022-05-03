@@ -20,36 +20,78 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
+#include <termios.h>            //termios, TCSANOW, ECHO, ICANON
 
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
-#include "serialize_lock.h"
 
-int main(int argc, char *argv[])
-{
+unsigned short *fb;
 
-  /* Serialize execution of applications */
-
-  /* Try to acquire lock the first */
-  if (serialize_lock(1) <= 0) {
-    printf("System is occupied\n");
-
-    if (1) {
-      printf("Waitting\n");
-      /* Wait till application holding lock releases it or exits */
-      serialize_lock(0);
-    }
+void draw_pixel(int x, int y, unsigned short color) {
+  if (x>=0 && x<480 && y>=0 && y<320) {
+    fb[x+480*y] = color;
   }
+}
+
+
+int main(int argc, char *argv[]) {
+  unsigned char *parlcd_mem_base;
+  int i,j,k;
+  int ptr;
+  unsigned int c;
+  fb  = (unsigned short *)malloc(320*480*2);
 
   printf("Hello world\n");
 
-  sleep(4);
+  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
 
+  if (parlcd_mem_base == NULL)
+    exit(1);
+
+  parlcd_hx8357_init(parlcd_mem_base);
+
+  parlcd_write_cmd(parlcd_mem_base, 0x2c);
+  ptr=0;
+  for (i = 0; i < 320 ; i++) {
+    for (j = 0; j < 480 ; j++) {
+      c = 0;
+      fb[ptr]=c;
+      parlcd_write_data(parlcd_mem_base, fb[ptr++]);
+    }
+  }
+  
+  struct timespec loop_delay;
+  loop_delay.tv_sec = 0;
+  loop_delay.tv_nsec = 150 * 1000 * 1000;
+  int xx=0, yy=0;
+  //char ch1=' ';
+  for (k=0; k<1000; k++) {
+    for (ptr = 0; ptr < 320*480 ; ptr++) {
+        fb[ptr]=0u;
+    }
+    for (j=0; j<60; j++) {
+      for (i=0; i<60; i++) {
+        draw_pixel(i+xx,j+yy,0x7ff);
+      }
+    }
+    
+    //int r = ;
+
+    parlcd_write_cmd(parlcd_mem_base, 0x2c);
+    for (ptr = 0; ptr < 480*320 ; ptr++) {
+        parlcd_write_data(parlcd_mem_base, fb[ptr]);
+    }
+
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+  }
+  
+  parlcd_write_cmd(parlcd_mem_base, 0x2c);
+  for (ptr = 0; ptr < 480*320 ; ptr++) {
+    parlcd_write_data(parlcd_mem_base, 0);
+  }
+  
   printf("Goodbye world\n");
-
-  /* Release the lock */
-  serialize_unlock();
 
   return 0;
 }
