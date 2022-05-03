@@ -20,27 +20,102 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
-#include <termios.h>            //termios, TCSANOW, ECHO, ICANON
 
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
+#include "font_types.h"
+
+#define GRID_SIZE 276
 
 unsigned short *fb;
+font_descriptor_t *fdes;
+int scale=2;
 
 void draw_pixel(int x, int y, unsigned short color) {
-  if (x>=0 && x<480 && y>=0 && y<320) {
-    fb[x+480*y] = color;
+    fb[(x%480)+480*(y%320)] = color;
+}
+
+void draw_pixel_big(int x, int y, unsigned short color) {
+  int i,j;
+  for (i=0; i<scale; i++) {
+    for (j=0; j<scale; j++) {
+      draw_pixel(x+i, y+j, color);
+    }
   }
+}
+
+int char_width(int ch) {
+  int width;
+  if (!fdes->width) {
+    width = fdes->maxwidth;
+  } else {
+    width = fdes->width[ch-fdes->firstchar];
+  }
+  return width;
+}
+
+void draw_char(int x, int y, char ch, unsigned short color) {
+  int w = char_width(ch);
+  const font_bits_t *ptr;
+  if ((ch >= fdes->firstchar) && (ch-fdes->firstchar < fdes->size)) {
+    if (fdes->offset) {
+      ptr = &fdes->bits[fdes->offset[ch-fdes->firstchar]];
+    } else {
+      int bw = (fdes->maxwidth+15)/16;
+      ptr = &fdes->bits[(ch-fdes->firstchar)*bw*fdes->height];
+    }
+    int i, j;
+    for (i=0; i<fdes->height; i++) {
+      font_bits_t val = *ptr;
+      for (j=0; j<w; j++) {
+        if ((val&0x8000)!=0) {
+          draw_pixel_big(x+scale*j, y+scale*i, color);
+        }
+        val<<=1;
+      }
+      ptr++;
+    }
+  }
+}
+
+unsigned int hsv2rgb_lcd(int hue, int saturation, int value) {
+  hue = (hue%360);    
+  float f = ((hue%60)/60.0);
+  int p = (value*(255-saturation))/255;
+  unsigned int q = (value*(255-(saturation*f)))/255;
+  unsigned int t = (value*(255-(saturation*(1.0-f))))/255;
+  unsigned int r,g,b;
+  if (hue < 60){
+    r = value; g = t; b = p;
+  } else if (hue < 120) {
+    r = q; g = value; b = p;
+  } else if (hue < 180) {
+    r = p; g = value; b = t;
+  } else if (hue < 240) {
+    r = p; g = q; b = value;
+  } else if (hue < 300) {
+    r = t; g = p; b = value;
+  } else {
+    r = value; g = p; b = q;
+  }
+  r>>=3;
+  g>>=2;
+  b>>=3;
+  return (((r&0x1f)<<11)|((g&0x3f)<<5)|(b&0x1f));
 }
 
 
 int main(int argc, char *argv[]) {
   unsigned char *parlcd_mem_base;
-  int i,j,k;
+  int i,j;
   int ptr;
-  unsigned int c;
-  fb  = (unsigned short *)malloc(320*480*2);
+  
+  int dark_green = hsv2rgb_lcd(115, 255, 50);
+  int light_green = hsv2rgb_lcd(83, 255, 255); 
+  
+  //unsigned int c;
+  fb  = (unsigned short *)malloc(320*480*2); // frame buffer
 
   printf("Hello world\n");
 
@@ -48,48 +123,35 @@ int main(int argc, char *argv[]) {
 
   if (parlcd_mem_base == NULL)
     exit(1);
-
   parlcd_hx8357_init(parlcd_mem_base);
-
-  parlcd_write_cmd(parlcd_mem_base, 0x2c);
-  ptr=0;
-  for (i = 0; i < 320 ; i++) {
-    for (j = 0; j < 480 ; j++) {
-      c = 0;
-      fb[ptr]=c;
-      parlcd_write_data(parlcd_mem_base, fb[ptr++]);
+  
+  
+  int startX = (480 - GRID_SIZE) / 2;
+  int startY = (320 - GRID_SIZE) / 2;
+  for (i = 0; i < GRID_SIZE ; i++) {
+    for (j = 0; j < GRID_SIZE ; j++) {
+      //unsigned int color = i % 25 && j % 25 ? hsv2rgb_lcd(136, 255, 255) : hsv2rgb_lcd(0, 255, 255); 
+      unsigned int color = i % 25 && j % 25 ? dark_green : light_green; 
+      draw_pixel( startX + i, startY + j, color);
     }
   }
   
-  struct timespec loop_delay;
-  loop_delay.tv_sec = 0;
-  loop_delay.tv_nsec = 150 * 1000 * 1000;
-  int xx=0, yy=0;
-  //char ch1=' ';
-  for (k=0; k<1000; k++) {
-    for (ptr = 0; ptr < 320*480 ; ptr++) {
-        fb[ptr]=0u;
-    }
-    for (j=0; j<60; j++) {
-      for (i=0; i<60; i++) {
-        draw_pixel(i+xx,j+yy,0x7ff);
-      }
-    }
-    
-    //int r = ;
-
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
-    for (ptr = 0; ptr < 480*320 ; ptr++) {
-        parlcd_write_data(parlcd_mem_base, fb[ptr]);
-    }
-
-    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+  char *first_row = "ABCDEFGHIJ\0";
+  //fdes = &font_winFreeSystem14x16;
+  fdes = &font_rom8x16;
+  for(int x = 1; x < 12; x++){
+  
+  draw_char((x*24) + (24 - char_width(first_row[x - 1])) / 2 + startX + x + 1, startY , first_row[x- 1], light_green);
+  
   }
   
   parlcd_write_cmd(parlcd_mem_base, 0x2c);
   for (ptr = 0; ptr < 480*320 ; ptr++) {
-    parlcd_write_data(parlcd_mem_base, 0);
+    parlcd_write_data(parlcd_mem_base, fb[ptr]);
   }
+
+  
+  while(1){};
   
   printf("Goodbye world\n");
 
