@@ -1,6 +1,6 @@
-
-void fillBox(int idxX, int idxY, int color);
-void getGridCoord(int idxX, int idxY, int *x, int *y);
+void fill_box(int idxX, int idxY, int color);
+int get_coord_x(int idx);
+int get_coord_y(int idx);
 
 // from APO templates
 unsigned int hsv2rgb_lcd(int hue, int saturation, int value);

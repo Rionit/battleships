@@ -27,6 +27,18 @@
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
 
+void draw_grid()
+{
+  for (int y = 0; y < GRID_SIZE; y++)
+  {
+    for (int x = 0; x < GRID_SIZE; x++)
+    {
+      unsigned int color = x % 25 && y % 25 ? dark_green : light_green;
+      draw_pixel(startX + x, startY + y, color);
+    }
+  }
+}
+
 int main(int argc, char *argv[])
 {
   unsigned char *parlcd_mem_base;
@@ -36,12 +48,12 @@ int main(int argc, char *argv[])
   fb = (unsigned short *)malloc(320 * 480 * 2); // frame buffer
 
   printf("Hello world\n");
-
   parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
 
   if (parlcd_mem_base == NULL)
     exit(1);
   parlcd_hx8357_init(parlcd_mem_base);
+  draw_grid();
 
   char *first_row = "ABCDEFGHIJ\0";
   fdes = &font_rom8x16;
@@ -65,14 +77,3 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void drawGrid()
-{
-  for (int y = 0; y < GRID_SIZE; y++)
-  {
-    for (int x = 0; x < GRID_SIZE; x++)
-    {
-      unsigned int color = x % 25 && y % 25 ? dark_green : light_green;
-      draw_pixel(startX + x, startY + y, color);
-    }
-  }
-}

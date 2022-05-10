@@ -1,35 +1,36 @@
 #include "constants.h"
 #include "font_types.h"
 
-void fillBox(int idxX, int idxY, int color)
-{
-    for (int y = getCoordY(idxY); y < BOX_SIZE; y++)
-    {
-        for (int x = getCoordX(idxX); x < BOX_SIZE; x++)
-        {
-            draw_pixel(x, y, color);
-        }
-    }
-}
 
-int getCoord(int start, int idx)
+int get_coord(int start, int idx)
 {
     return start + (idx + 1) + idx * BOX_SIZE;
 }
 
-int getCoordX(int idx)
+int get_coord_x(int idx)
 {
-    getCoord(startX, idx);
+    return get_coord(startX, idx);
 }
 
-int getCoordY(int idx)
+int get_coord_y(int idx)
 {
-    getCoord(startY, idx);
+    return get_coord(startY, idx);
 }
 
 void draw_pixel(int x, int y, unsigned short color)
 {
     fb[(x % 480) + 480 * (y % 320)] = color;
+}
+
+void fill_box(int idxX, int idxY, int color)
+{
+    for (int y = get_coord_y(idxY); y < BOX_SIZE; y++)
+    {
+        for (int x = get_coord_x(idxX); x < BOX_SIZE; x++)
+        {
+            draw_pixel(x, y, color);
+        }
+    }
 }
 
 void draw_pixel_big(int x, int y, unsigned short color)
