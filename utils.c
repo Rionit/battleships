@@ -24,11 +24,13 @@ void draw_pixel(int x, int y, unsigned short color)
 
 void fill_box(int idxX, int idxY, int color)
 {
-    for (int y = get_coord_y(idxY); y < BOX_SIZE; y++)
+    int boxY = get_coord_y(idxY);
+    int boxX = get_coord_x(idxX);
+    for (int y = 0; y < BOX_SIZE; y++)
     {
-        for (int x = get_coord_x(idxX); x < BOX_SIZE; x++)
+        for (int x = 0; x < BOX_SIZE; x++)
         {
-            draw_pixel(x, y, color);
+            draw_pixel(boxX + x, boxY + y, color);
         }
     }
 }

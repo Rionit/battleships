@@ -2,13 +2,13 @@
 #define CONSTANTS_H
 #include "font_types.h"
 
-int const GRID_SIZE;
-int const BOX_COUNT;
-int const BOX_SIZE;
-int const LINE_MOD;
-int const scale;
-int const startX;
-int const startY;
+const int GRID_SIZE;
+const int BOX_COUNT;
+const int BOX_SIZE;
+const int LINE_MOD;
+const int scale;
+const int startX;
+const int startY;
 
 int dark_green;
 int light_green;
