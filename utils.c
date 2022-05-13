@@ -1,7 +1,6 @@
 #include "constants.h"
 #include "font_types.h"
 
-
 int get_coord(int start, int idx)
 {
     return start + (idx + 1) + idx * BOX_SIZE;
@@ -20,6 +19,11 @@ int get_coord_y(int idx)
 void draw_pixel(int x, int y, unsigned short color)
 {
     fb[(x % 480) + 480 * (y % 320)] = color;
+}
+
+void fill_board_box(int idxX, int idxY, int color)
+{
+    fill_box(idxX + 1, idxY + 1, color);
 }
 
 void fill_box(int idxX, int idxY, int color)

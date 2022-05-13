@@ -9,9 +9,10 @@ const int LINE_MOD;
 const int scale;
 const int startX;
 const int startY;
+const int knob_precision;
 
-int dark_green;
-int light_green;
+const int dark_green;
+const int light_green;
 
 unsigned short *fb;
 font_descriptor_t *fdes;

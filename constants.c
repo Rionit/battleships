@@ -8,9 +8,10 @@ const int LINE_MOD = BOX_SIZE + 1;
 const int scale = 2;
 const int startX = (480 - GRID_SIZE) / 2;
 const int startY = (320 - GRID_SIZE) / 2;
+const int knob_precision = 10;
 
-int dark_green = 384;
-int light_green = 40928;
+const int dark_green = 384;
+const int light_green = 40928;
 
 unsigned short *fb;
 font_descriptor_t *fdes;

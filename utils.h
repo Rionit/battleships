@@ -1,4 +1,5 @@
 void fill_box(int idxX, int idxY, int color);
+void fill_board_box(int idxX, int idxY, int color);
 int get_coord_x(int idx);
 int get_coord_y(int idx);
 
