@@ -21,9 +21,19 @@ void draw_pixel(int x, int y, unsigned short color)
     fb[(x % 480) + 480 * (y % 320)] = color;
 }
 
-void fill_board_box(int idxX, int idxY, int color)
+void highlight_box(int idxX, int idxY)
 {
-    fill_box(idxX + 1, idxY + 1, color);
+    int white = 65535;
+    int boxY = get_coord_y(idxY + 1);
+    int boxX = get_coord_x(idxX + 1);
+    for (int y = 0; y < BOX_SIZE; y++)
+    {
+        for (int x = 0; x < BOX_SIZE; x++)
+        {
+            if (y == 0 || x == 0 || y == BOX_SIZE - 1 || x == BOX_SIZE - 1)
+                draw_pixel(boxX + x, boxY + y, white);
+        }
+    }
 }
 
 void fill_box(int idxX, int idxY, int color)
@@ -37,6 +47,11 @@ void fill_box(int idxX, int idxY, int color)
             draw_pixel(boxX + x, boxY + y, color);
         }
     }
+}
+
+void fill_board_box(int idxX, int idxY, int color)
+{
+    fill_box(idxX + 1, idxY + 1, color);
 }
 
 void draw_pixel_big(int x, int y, unsigned short color)

@@ -28,6 +28,14 @@
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
 
+enum STATES
+{
+  SEA = 384,
+  SHIP = 40928,
+  SEA_HIT = 36636,
+  SHIP_HIT = 57344
+};
+
 void draw_grid()
 {
   for (int y = 0; y < GRID_SIZE; y++)
@@ -53,22 +61,28 @@ void draw_grid_chars()
   }
 }
 
-void redraw_ship(int curIdx, int curIdy, int rotation, int length)
+void redraw_ship(int *curIdx, int *curIdy, int rotation, int length)
 {
+
+  if (!rotation && *curIdy + length > 10)
+  {
+    (*curIdy)--;
+  }
+  if (rotation && *curIdx + length > 10)
+  {
+    (*curIdx)--;
+  }
 
   for (size_t i = 0; i < length; i++)
   {
 
-    printf("%d\n", rotation);
-    if (rotation == 1)
+    if (rotation)
     {
-      printf("JSEM HORIZONTALNI\n");
-      fill_board_box(curIdx + i, curIdy, light_green);
+      fill_board_box(*curIdx + i, *curIdy, SHIP);
     }
     else
     {
-      printf("JSEM VERTIKALNI\n");
-      fill_board_box(curIdx, curIdy + i, light_green);
+      fill_board_box(*curIdx, *curIdy + i, SHIP);
     }
   }
 }
@@ -79,10 +93,42 @@ void draw_board(int gameBoard[10][10], int curx, int cury)
   {
     for (size_t j = 0; j < 10; j++)
     {
-      fill_board_box(i, j, gameBoard[i][j]);
+      // printf("%d\t", gameBoard[i][j]);
+      fill_board_box(j, i, gameBoard[i][j]);
+    }
+    // printf("\n");
+  }
+  // printf("\n");
+  // fill_board_box(curx, cury, gameBoard[cury][curx] + 500);
+  highlight_box(curx, cury);
+}
+
+void delay(int msec)
+{
+  struct timespec wait_delay = {.tv_sec = msec / 1000,
+                                .tv_nsec = (msec % 1000) * 1000 * 1000};
+  clock_nanosleep(CLOCK_MONOTONIC, 0, &wait_delay, NULL);
+}
+
+void place_ship(int *curIdx, int *curIdy, int rotation, int length, int gameBoard[10][10])
+{
+  printf("rotation: %d", rotation);
+  for (size_t i = 0; i < length; i++)
+  {
+
+    if (rotation)
+    {
+      printf(" JSEM V 1\n");
+      gameBoard[*curIdy][*curIdx + i] = SHIP;
+    }
+    else
+    {
+      printf(" JSEM V 0\n");
+      gameBoard[*curIdy + i][*curIdx] = SHIP;
     }
   }
-  fill_board_box(curx, cury, gameBoard[curx][cury] + 100);
+
+  draw_board(gameBoard, *curIdx, *curIdy);
 }
 
 unsigned char *parlcd_mem_base;
@@ -95,71 +141,7 @@ void draw_lcd()
   }
 }
 
-void setup_board(int gameBoard[10][10])
-{
-  int ship_lengths[] = {2, 2, 3, 3, 4};
-
-  unsigned char *mem_base;
-  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
-
-  for (size_t i = 0; i < 5; i++)
-  {
-
-    int curKnob1 = 0;
-
-    int curx, cury, curRot;
-    curx = 0;
-    cury = 1;
-    curRot = 0;
-    uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-    // IS PLACED?????
-    while ((knobs & 0x7000000) == 0)
-    {
-      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-      // modry knob urcuje pozici ledky
-      // knobama menim barvu rgb ledky
-      // int idx = (int)((knobs & 0xff) / 26) + 1;
-      // int idy = (int)(((knobs >> 8) & 0xff) / 26) + 1;
-
-      int knob1 = (knobs & 0xff);
-      int dif = knob1 - curKnob1;
-      if (dif > 200)
-      {
-        dif = 255 - (curKnob1 + knob1);
-      }
-      else if (dif < -200)
-      {
-        dif = 255 + knob1 - curKnob1;
-      }
-
-      printf("cur %d prev %d dif %d\n", curKnob1, knob1, dif);
-      int rotation = (int)(((knobs >> 16) & 0xff) / 26) % 2;
-
-      if (rotation != curRot)
-      {
-
-        curRot = rotation;
-
-        draw_board(gameBoard, curx, cury);
-        redraw_ship(curx, cury, curRot, ship_lengths[i]);
-        draw_lcd();
-      }
-
-      if (dif > 20 || dif < -20)
-      {
-
-        curKnob1 = knob1;
-        curx += (dif > 0) ? 1 : -1;
-
-        draw_board(gameBoard, curx, cury);
-        redraw_ship(curx, cury, curRot, ship_lengths[i]);
-        draw_lcd();
-      }
-    }
-  }
-}
-
-int get_cursor(int *curKnob, int prevKnob, int *cur)
+int get_cursor(int *curKnob, int prevKnob, int *cur, bool modulate)
 {
 
   int dif = prevKnob - *curKnob;
@@ -175,11 +157,94 @@ int get_cursor(int *curKnob, int prevKnob, int *cur)
   if (dif > knob_precision || dif < -knob_precision)
   {
     *curKnob = prevKnob;
-    *cur = ((*cur + (dif > 0 ? 1 : -1)) % 10);
-    *cur += *cur < 0 ? 10 : 0;
+    if (modulate)
+    {
+      *cur = ((*cur + (dif > 0 ? -1 : +1)) % 10);
+      *cur += *cur < 0 ? 10 : 0;
+    }
+    else
+    {
+      *cur = (*cur + (dif > 0 ? -1 : +1));
+      *cur = *cur < 0 ? 0 : *cur;
+      *cur = *cur > 9 ? 9 : *cur;
+    }
     return true;
   }
   return false;
+}
+
+bool is_occupied(int x, int y, int gameBoard[10][10])
+{
+  return gameBoard[y][x] == SHIP;
+}
+
+bool can_place(int curIdx, int curIdy, int rotation, int length, int gameBoard[10][10])
+{
+  for (size_t i = 0; i < length; i++)
+  {
+    int incX, incY;
+    if (rotation)
+    {
+      incX = i;
+      incY = 0;
+    }
+    else
+    {
+      incX = 0;
+      incY = i;
+    }
+    if (is_occupied(curIdx + incX, curIdy + incY, gameBoard) || is_occupied(curIdx + incX + 1, curIdy + incY, gameBoard) || is_occupied(curIdx + incX - 1, curIdy + incY, gameBoard) || is_occupied(curIdx + incX, curIdy + incY + 1, gameBoard) || is_occupied(curIdx + incX, curIdy + incY - 1, gameBoard))
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void setup_board(int gameBoard[10][10])
+{
+
+  unsigned char *mem_base;
+  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
+
+  for (size_t i = 0; i < SHIPS_LENGTH; i++)
+  {
+
+    uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    int curx, cury;
+    int curKnobx, curKnoby;
+    curKnobx = (knobs & 0xff);
+    curKnoby = ((knobs >> 8) & 0xff);
+    curx = 0;
+    cury = 0;
+    int curRot = 0;
+
+    while (((knobs & 0x7000000) == 0) || !can_place(curx, cury, curRot, ships[i], gameBoard))
+    {
+      // knobama menim barvu rgb ledky
+      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+      // modry knob urcuje pozici ledky
+
+      int rotation = (int)(((knobs >> 16) & 0xff) / 26) % 2;
+
+      if (get_cursor(&curKnobx, (knobs & 0xff), &curx, false) || get_cursor(&curKnoby, ((knobs >> 8) & 0xff), &cury, false) || rotation != curRot)
+      {
+        curRot = rotation;
+        draw_board(gameBoard, curx, cury);
+        redraw_ship(&curx, &cury, curRot, ships[i]);
+        draw_lcd();
+      }
+    }
+
+    place_ship(&curx, &cury, curRot, ships[i], gameBoard);
+
+    while ((knobs & 0x7000000) != 0)
+    {
+      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    }
+    delay(10);
+  }
 }
 
 void initial_draw(int gameBoard[10][10])
@@ -192,28 +257,20 @@ void initial_draw(int gameBoard[10][10])
 
 int main(int argc, char *argv[])
 {
-  enum STATES
-  {
-    SEA = 384,
-    SHIP = 40928,
-    SEA_HIT = 3543,
-    SHIP_HIT = 4352
-  };
 
   int gameBoard[10][10];
+
+  printf("RED: %d\n", hsv2rgb_lcd(360, 255, 225));
+  printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
 
   for (int i = 0; i < 10; i++)
   {
     for (int j = 0; j < 10; j++)
     {
       gameBoard[i][j] = SEA;
-      printf("[%d, %d]: %d\n", i, j, gameBoard[i][j]);
+      //"[%d, %d]: %d\n", i, j, gameBoard[i][j]);
     }
   }
-
-  gameBoard[5][5] = SHIP;
-  gameBoard[6][5] = SEA_HIT;
-  gameBoard[7][5] = SHIP_HIT;
 
   unsigned char *mem_base;
   uint32_t knobs;
@@ -230,7 +287,7 @@ int main(int argc, char *argv[])
   parlcd_hx8357_init(parlcd_mem_base);
 
   initial_draw(gameBoard);
-  // setup_board(gameBoard);
+  setup_board(gameBoard);
 
   knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   int curx, cury;
@@ -244,9 +301,9 @@ int main(int argc, char *argv[])
     // knobama menim barvu rgb ledky
     knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     // modry knob urcuje pozici ledky
-    if (get_cursor(&curKnobx, (knobs & 0xff), &curx) || get_cursor(&curKnoby, ((knobs >> 8) & 0xff), &cury))
+    if (get_cursor(&curKnobx, (knobs & 0xff), &curx, true) || get_cursor(&curKnoby, ((knobs >> 8) & 0xff), &cury, true))
     {
-      printf("curx:%d cury:%d\n", curx, cury);
+      // printf("curx:%d cury:%d\n", curx, cury);
       draw_board(gameBoard, curx, cury);
       draw_lcd();
     }
@@ -256,8 +313,20 @@ int main(int argc, char *argv[])
       draw_board(gameBoard, curx, cury);
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0xFF0000;
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0xFF0000;
+
       printf("BANG!!!!!!!\n");
-      fill_box(curx, cury, hsv2rgb_lcd(360, 255, 255));
+      switch (gameBoard[cury][curx])
+      {
+      case SEA:
+        fill_board_box(curx, cury, SEA_HIT);
+        gameBoard[cury][curx] = SEA_HIT;
+        break;
+      case SHIP:
+        fill_board_box(curx, cury, SHIP_HIT);
+        gameBoard[cury][curx] = SHIP_HIT;
+        break;
+      }
+
       draw_lcd();
     }
     else
