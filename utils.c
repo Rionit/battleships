@@ -1,5 +1,6 @@
 #include "constants.h"
 #include "font_types.h"
+#include <unistd.h>
 
 int get_coord(int start, int idx)
 {
@@ -23,7 +24,6 @@ void draw_pixel(int x, int y, unsigned short color)
 
 void highlight_box(int idxX, int idxY)
 {
-    int white = 65535;
     int boxY = get_coord_y(idxY + 1);
     int boxX = get_coord_x(idxX + 1);
     for (int y = 0; y < BOX_SIZE; y++)
@@ -31,7 +31,7 @@ void highlight_box(int idxX, int idxY)
         for (int x = 0; x < BOX_SIZE; x++)
         {
             if (y == 0 || x == 0 || y == BOX_SIZE - 1 || x == BOX_SIZE - 1)
-                draw_pixel(boxX + x, boxY + y, white);
+                draw_pixel(boxX + x, boxY + y, 65535);
         }
     }
 }
@@ -54,6 +54,17 @@ void fill_board_box(int idxX, int idxY, int color)
     fill_box(idxX + 1, idxY + 1, color);
 }
 
+void draw_board(int (*gameBoard)[10])
+{
+    for (size_t y = 0; y < BOARD_LEN; y++)
+    {
+        for (size_t x = 0; x < BOARD_LEN; x++)
+        {
+            fill_board_box(x, y, gameBoard[y][x]);
+        }
+    }
+}
+
 void draw_pixel_big(int x, int y, unsigned short color)
 {
     int i, j;
@@ -70,13 +81,9 @@ int char_width(int ch)
 {
     int width;
     if (!fdes->width)
-    {
         width = fdes->maxwidth;
-    }
     else
-    {
         width = fdes->width[ch - fdes->firstchar];
-    }
     return width;
 }
 

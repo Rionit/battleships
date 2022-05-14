@@ -5,6 +5,7 @@
 
 const int GRID_SIZE;
 const int BOX_COUNT;
+const int BOARD_LEN;
 const int BOX_SIZE;
 const int LINE_MOD;
 const int scale;

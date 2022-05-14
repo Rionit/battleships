@@ -1,4 +1,4 @@
 *.o
 depend
-change_me
+main
 connect.gdb

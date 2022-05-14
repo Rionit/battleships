@@ -20,6 +20,8 @@
         "VERTIKALNI"
     ],
     "files.associations": {
-        "font_types.h": "c"
+        "font_types.h": "c",
+        "string_view": "c",
+        "constants.h": "c"
     }
 }

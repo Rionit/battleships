@@ -1,6 +1,8 @@
+#include "constants.h"
 void highlight_box(int idxX, int idxY);
 void fill_box(int idxX, int idxY, int color);
 void fill_board_box(int idxX, int idxY, int color);
+void draw_board(int (*gameBoard)[10]);
 int get_coord_x(int idx);
 int get_coord_y(int idx);
 

@@ -5,6 +5,7 @@
 
 const int GRID_SIZE = 276;
 const int BOX_COUNT = 11;
+const int BOARD_LEN = BOX_COUNT - 1;
 const int BOX_SIZE = (GRID_SIZE - (BOX_COUNT + 1)) / BOX_COUNT;
 const int LINE_MOD = BOX_SIZE + 1;
 const int scale = 2;
