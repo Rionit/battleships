@@ -1,8 +1,6 @@
 
 #include "font_types.h"
 
-#define SHIPS_LENGTH 2
-
 const int GRID_SIZE = 276;
 const int BOX_COUNT = 11;
 const int BOARD_LEN = BOX_COUNT - 1;

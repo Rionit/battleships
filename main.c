@@ -16,19 +16,23 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <string.h>
 
+#include "tcp.h"
 #include "utils.h"
 #include "constants.h"
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
+#include <sys/socket.h>
 
-enum STATES
+enum GAME_STATES
 {
-  SEA = 384,
-  SHIP = 40928,
-  SEA_HIT = 36636,
-  SHIP_HIT = 57344
+  RUNNING,
+  WON,
+  LOST
 };
 
 typedef struct
@@ -38,10 +42,13 @@ typedef struct
   short knobX;
   short knobY;
   bool vertical;
-  int (*gameBoard)[10];
+  int (*board)[10];
+  int (*boardEnemy)[10];
+  int shipsLeft;
 } game_info;
 
 unsigned char *mem_base;
+bool onTurn = true;
 
 void draw_grid()
 {
@@ -67,21 +74,21 @@ void draw_grid_chars()
   }
 }
 
-void redraw_ship(game_info info, int length)
+void redraw_ship(game_info *info, int length)
 {
   for (size_t i = 0; i < length; i++)
   {
-    if (info.vertical)
-      fill_board_box(info.curx + i, info.cury, SHIP);
+    if (info->vertical)
+      fill_board_box(info->curx + i, info->cury, SHIP);
     else
-      fill_board_box(info.curx, info.cury + i, SHIP);
+      fill_board_box(info->curx, info->cury + i, SHIP);
   }
 }
 
-void draw_board_cur(game_info info)
+void draw_board_enemy(game_info *info)
 {
-  draw_board(info.gameBoard);
-  highlight_box(info.curx, info.cury);
+  draw_board(info->boardEnemy);
+  highlight_box(info->curx, info->cury);
 }
 
 void delay(int msec)
@@ -91,15 +98,15 @@ void delay(int msec)
   clock_nanosleep(CLOCK_MONOTONIC, 0, &wait_delay, NULL);
 }
 
-void place_ship(game_info info, int length)
+void place_ship(game_info *info, int length)
 {
-  printf("vertical: %d", info.vertical);
+  printf("vertical: %d", info->vertical);
   for (size_t i = 0; i < length; i++)
   {
-    if (info.vertical)
-      info.gameBoard[info.cury][info.curx + i] = SHIP;
+    if (info->vertical)
+      info->board[info->cury][info->curx + i] = SHIP;
     else
-      info.gameBoard[info.cury + i][info.curx] = SHIP;
+      info->board[info->cury + i][info->curx] = SHIP;
   }
 }
 
@@ -141,54 +148,55 @@ int set_cursor(short *curKnob, short prevKnob, short *cur, bool modulate)
   return false;
 }
 
-bool can_place(game_info info, int length)
+bool can_place(game_info *info, int length)
 {
-  short x = info.curx;
-  short y = info.cury;
+  short x = info->curx;
+  short y = info->cury;
   for (size_t i = 0; i < length; i++)
   {
-    if (info.vertical)
-      x++;
+    if (info->vertical)
+      x = info->curx + i;
     else
-      y++;
-    if (info.gameBoard[y][x] == SHIP || info.gameBoard[y][x + 1] == SHIP || info.gameBoard[y][x - 1] == SHIP || info.gameBoard[y + 1][x] == SHIP || info.gameBoard[y - 1][x] == SHIP)
+      y = info->curx + i;
+
+    if (info->board[y][x] == SHIP || info->board[y][x + 1] == SHIP || info->board[y][x - 1] == SHIP || info->board[y + 1][x] == SHIP || info->board[y - 1][x] == SHIP)
       return false;
   }
+  printf("can place!\n");
   return true;
 }
 
-void setup_board(game_info info)
+void setup_board(game_info *info)
 {
-  for (size_t i = 0; i < SHIPS_LENGTH; i++)
+  for (size_t i = 0; i < TOTAL_SHIPS; i++)
   {
-    info.curx = 0;
-    info.cury = 0;
+    info->curx = 0;
+    info->cury = 0;
     redraw_ship(info, ships[i]);
 
     uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     // break when knob is pressed and ship can be placed
     while (((knobs & 0x7000000) == 0) || !can_place(info, ships[i]))
     {
-      uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o); // read knobs
-      bool vertical = (bool)(((knobs >> 16) & 0xff) / 26) % 2;                     // ship rotation
-
+      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o); // read knobs
+      bool vertical = (bool)((((knobs >> 16) & 0xff) / 27) % 2);          // ship rotation
       // Moved with cursor or rotated ship?
-      if (set_cursor(&(info.knobX), (knobs & 0xff), &(info.curx), false) || set_cursor(&(info.knobY), ((knobs >> 8) & 0xff), &(info.cury), false) || vertical != info.vertical)
+      if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || vertical != info->vertical)
       {
-        info.vertical = vertical;
+        info->vertical = vertical;
         // Block moving when ship touches the border
-        if (!vertical && info.cury + ships[i] >= BOX_COUNT)
-          info.cury--;
-        if (vertical && info.curx + ships[i] >= BOX_COUNT)
-          info.curx--;
-        draw_board(info.gameBoard);
+        if (!vertical && info->cury + ships[i] >= BOX_COUNT)
+          info->cury--;
+        if (vertical && info->curx + ships[i] >= BOX_COUNT)
+          info->curx--;
+        draw_board(info->board);
         redraw_ship(info, ships[i]);
         draw_lcd();
       }
     }
 
     place_ship(info, ships[i]);
-    draw_board(info.gameBoard);
+    draw_board(info->board);
 
     // wait for player to unpress the knob
     while ((knobs & 0x7000000) != 0)
@@ -199,74 +207,113 @@ void setup_board(game_info info)
   }
 }
 
-void initial_draw(int (*gameBoard)[10])
+void initial_draw(int (*board)[10])
 {
   draw_grid();
   draw_grid_chars();
-  draw_board(gameBoard);
+  draw_board(board);
   highlight_box(0, 0);
   draw_lcd();
 }
 
+void setup_connection(bool starts)
+{
+  if (starts)
+    connect_to();
+  else
+    connect_from();
+}
+
 game_info setup()
 {
-  int *gameBoard_p = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
-  int(*gameBoard)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p;
-  for (int i = 0; i < 10; i++)
-  {
-    for (int j = 0; j < 10; j++)
-    {
-      gameBoard[i][j] = SEA;
-    }
-  }
-  uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-  // init info
-  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, gameBoard};
 
   // frame buffer
   fb = (unsigned short *)malloc(320 * 480 * 2);
 
   // setup display
-  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
   mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
+  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
   if (parlcd_mem_base == NULL || mem_base == NULL)
     exit(1);
   parlcd_hx8357_init(parlcd_mem_base);
 
+  int *gameBoard_p = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
+  int(*board)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p;
+  int *gameBoard_p2 = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
+  int(*boardEnemy)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p2;
+  for (int i = 0; i < 10; i++)
+  {
+    for (int j = 0; j < 10; j++)
+    {
+      boardEnemy[i][j] = SEA;
+      board[i][j] = SEA;
+    }
+  }
+  uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  // init info
+  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS};
+
   // game board setup
-  setup_board(info);
-  initial_draw(info.gameBoard);
+  setup_connection(onTurn);
+  initial_draw(info.board);
+  setup_board(&info);
+  send_ready();
   return info;
 }
 
-int main(int argc, char *argv[])
+int player_state(game_info *info)
 {
-  game_info info = setup();
-  // printf("RED: %d\n", hsv2rgb_lcd(360, 255, 225));
-  // printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
+  printf("entered player state\n");
+  draw_board(info->board);
+  draw_lcd();
+  short shotx, shoty;
+  send_response(info->board, &shotx, &shoty);
+  int *box = &(info->board[shoty][shotx]);
+  printf("changing to value: %d\n", *box);
+  switch (*box)
+  {
+  case SEA:
+    *box = SEA_HIT;
+    break;
+  case SHIP:
+    *box = SHIP_HIT;
+    break;
+  }
+  draw_board(info->board);
+  printf("leaving player state\n");
+  return RUNNING;
+}
 
+int enemy_state(game_info *info)
+{
+  printf("entered enemy state\n");
+  draw_board_enemy(info);
+  draw_lcd();
   while (1)
   {
     uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     // Knobs rotated? -> cursor changed
-    if (set_cursor(&(info.knobX), knobs & 0xff, &(info.curx), true) || set_cursor(&(info.knobY), (knobs >> 8) & 0xff, &(info.cury), true))
+    if (set_cursor(&(info->knobX), knobs & 0xff, &(info->curx), true) || set_cursor(&(info->knobY), (knobs >> 8) & 0xff, &(info->cury), true))
     {
       // printf("curx:%d cury:%d\n", curx, cury);
-      draw_board_cur(info);
+      draw_board_enemy(info);
       draw_lcd();
     }
 
     // Knobs pressed?
     if ((knobs & 0x7000000) != 0)
     {
+      while ((knobs & 0x7000000) != 0)
+        knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
       // red RGB leds
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0xFF0000;
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0xFF0000;
 
       // Shoot
       printf("BANG!!!!!!!\n");
-      int *box = &(info.gameBoard[info.cury][info.curx]);
-      switch (*box)
+      int *box = &(info->boardEnemy[info->cury][info->curx]);
+
+      switch (send_coord(info->curx, info->cury))
       {
       case SEA:
         *box = SEA_HIT;
@@ -274,9 +321,15 @@ int main(int argc, char *argv[])
       case SHIP:
         *box = SHIP_HIT;
         break;
+      case SEA_HIT:
+        *box = SEA_HIT;
+        break;
+      case SHIP_HIT:
+        *box = SHIP_HIT;
+        break;
       }
-      draw_board_cur(info);
-      draw_lcd();
+      draw_board_enemy(info);
+      break;
     }
     else
     {
@@ -285,6 +338,34 @@ int main(int argc, char *argv[])
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0;
     }
   }
+  printf("leaving enemy state\n");
+  return RUNNING;
+}
+
+int main(int argc, char *argv[])
+{
+
+  game_info info = setup();
+
+  int state = RUNNING;
+
+  while (state == RUNNING)
+  {
+    printf("new turn\n");
+    if (onTurn)
+    {
+      state = enemy_state(&info);
+    }
+    else
+    {
+      state = player_state(&info);
+    }
+    draw_lcd();
+    delay(2000);
+    onTurn = !onTurn;
+  }
+  // printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
+  // printf("RED: %d\n", hsv2rgb_lcd(255, 255, 225));
 
   printf("Goodbye world\n");
 

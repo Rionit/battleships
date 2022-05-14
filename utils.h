@@ -1,10 +1,13 @@
 #include "constants.h"
+#include <stdbool.h>
 void highlight_box(int idxX, int idxY);
 void fill_box(int idxX, int idxY, int color);
 void fill_board_box(int idxX, int idxY, int color);
 void draw_board(int (*gameBoard)[10]);
 int get_coord_x(int idx);
 int get_coord_y(int idx);
+bool flood_filled(int (*board)[10], short x, short y);
+bool check_side(int (*board)[10], int x, int y, int incX, int incY, int *length);
 
 // from APO templates
 unsigned int hsv2rgb_lcd(int hue, int saturation, int value);
