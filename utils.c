@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <time.h>
 
 int get_coord(int start, int idx)
 {
@@ -171,50 +172,48 @@ unsigned int hsv2rgb_lcd(int hue, int saturation, int value)
     return (((r & 0x1f) << 11) | ((g & 0x3f) << 5) | (b & 0x1f));
 }
 
+void delay(int msec)
+{
+    struct timespec wait_delay = {.tv_sec = msec / 1000,
+                                  .tv_nsec = (msec % 1000) * 1000 * 1000};
+    clock_nanosleep(1, 0, &wait_delay, NULL);
+}
+
 bool check_side(int (*board)[10], short x, short y, int incX, int incY, int *length)
 {
-    printf("incx:%d\t incy:%d\n", incX, incY);
-    printf("startx:%d\t starty:%d\n", x, y);
 
     y += incY == 0 ? 0 : incY;
     x += incX == 0 ? 0 : incX;
     while ((y <= 9) && (y >= 0) && (x <= 9) && x >= 0 && board[y][x] != SEA && board[y][x] != SEA_HIT)
     {
-        printf("y%d x%d type:%d\n", y, x, board[y][x]);
         if (board[y][x] == SHIP)
         {
             return false;
         }
-        printf("%d\n", *length);
         *length = *length + 1;
         y += incY == 0 ? 0 : incY;
         x += incX == 0 ? 0 : incX;
     }
-    printf("vracim true x%d\t y%d\n", x, y);
     return true;
 }
 
 bool flood_filled(int (*board)[10], short x, short y)
 {
     printf("flood filling\n");
-    // printf("%d\n", SHIP);
-    printf("%d\n", board[y][x]);
+
     bool horizontalLeft = (((x - 1) >= 0) && (board[y][x - 1] == SHIP || board[y][x - 1] == SHIP_HIT));
     bool horizontalRight = (((x + 1) <= 9) && (board[y][x + 1] == SHIP || board[y][x + 1] == SHIP_HIT));
     bool horizontal = horizontalLeft || horizontalRight;
     int incX = horizontal ? 1 : 0;
     int incY = horizontal ? 0 : 1;
-    printf("1 \n");
 
     int len1, len2;
-    len1 = 0, len2 = 0;
+    len1 = len2 = 0;
 
     if (!check_side(board, x, y, incX, incY, &len1) || !check_side(board, x, y, -incX, -incY, &len2))
     {
-        printf("wut\n");
         return false;
     }
-    printf("len1:%d len2:%d \n", len1, len2);
 
     if (incX == 1)
     {

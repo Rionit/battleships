@@ -5,8 +5,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "utils.h"
-
 #define SERVER_IP "192.168.0.227"
 
 int socket_desc;
@@ -138,7 +136,7 @@ void send_ready()
     }
 }
 
-void send_response(int (*gameBoard)[10], short *shotx, short *shoty)
+void receive_coords(short *shotx, short *shoty)
 {
 
     char client_message[20];
@@ -151,21 +149,12 @@ void send_response(int (*gameBoard)[10], short *shotx, short *shoty)
     printf("Msg from client: %s\n", client_message);
 
     sscanf(client_message, "%hd,%hd;", shotx, shoty);
+}
 
-    if (gameBoard[*shoty][*shotx] == SHIP && flood_filled(gameBoard, *shotx, *shoty))
-    {
-        printf("Loď potopena!\n");
-    }
-    else if (gameBoard[*shoty][*shotx] == SHIP)
-    {
-        printf("Loď zasažena!\n");
-    }
-    else
-    {
-        printf("Vedle jak ta jedle!\n");
-    }
-
-    sprintf(client_message, "%d;", gameBoard[*shoty][*shotx]);
+void send_response(int message)
+{
+    char client_message[20];
+    sprintf(client_message, "%d;", message);
 
     if (send(socket_desc, client_message, strlen(client_message), 0) < 0)
     {

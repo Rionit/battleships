@@ -41,10 +41,11 @@ typedef struct
   short cury;
   short knobX;
   short knobY;
-  bool vertical;
+  bool horizontal;
   int (*board)[10];
   int (*boardEnemy)[10];
-  int shipsLeft;
+  int shipsLeftPlayer;
+  int shipsLeftEnemy;
 } game_info;
 
 unsigned char *mem_base;
@@ -78,7 +79,7 @@ void redraw_ship(game_info *info, int length)
 {
   for (size_t i = 0; i < length; i++)
   {
-    if (info->vertical)
+    if (info->horizontal)
       fill_board_box(info->curx + i, info->cury, SHIP);
     else
       fill_board_box(info->curx, info->cury + i, SHIP);
@@ -91,19 +92,12 @@ void draw_board_enemy(game_info *info)
   highlight_box(info->curx, info->cury);
 }
 
-void delay(int msec)
-{
-  struct timespec wait_delay = {.tv_sec = msec / 1000,
-                                .tv_nsec = (msec % 1000) * 1000 * 1000};
-  clock_nanosleep(CLOCK_MONOTONIC, 0, &wait_delay, NULL);
-}
-
 void place_ship(game_info *info, int length)
 {
-  printf("vertical: %d", info->vertical);
+  printf("horizontal: %d", info->horizontal);
   for (size_t i = 0; i < length; i++)
   {
-    if (info->vertical)
+    if (info->horizontal)
       info->board[info->cury][info->curx + i] = SHIP;
     else
       info->board[info->cury + i][info->curx] = SHIP;
@@ -152,14 +146,21 @@ bool can_place(game_info *info, int length)
 {
   short x = info->curx;
   short y = info->cury;
+  printf("\nx: %d, y: %d\n", x, y);
   for (size_t i = 0; i < length; i++)
   {
-    if (info->vertical)
+    if (info->horizontal)
       x = info->curx + i;
     else
-      y = info->curx + i;
+      y = info->cury + i;
 
-    if (info->board[y][x] == SHIP || info->board[y][x + 1] == SHIP || info->board[y][x - 1] == SHIP || info->board[y + 1][x] == SHIP || info->board[y - 1][x] == SHIP)
+    printf("x+i: %d, y+i: %d\n", x, y);
+    bool l = (x - 1 >= 0) ? (info->board[y][x - 1] == SHIP) : false;
+    bool r = (x + 1 <= 9) ? (info->board[y][x + 1] == SHIP) : false;
+    bool b = (y + 1 <= 9) ? (info->board[y + 1][x] == SHIP) : false;
+    bool t = (y - 1 >= 0) ? (info->board[y - 1][x] == SHIP) : false;
+
+    if (info->board[y][x] == SHIP || l || r || b || t)
       return false;
   }
   printf("can place!\n");
@@ -179,15 +180,15 @@ void setup_board(game_info *info)
     while (((knobs & 0x7000000) == 0) || !can_place(info, ships[i]))
     {
       knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o); // read knobs
-      bool vertical = (bool)((((knobs >> 16) & 0xff) / 27) % 2);          // ship rotation
+      bool horizontal = (bool)((((knobs >> 16) & 0xff) / 27) % 2);        // ship rotation
       // Moved with cursor or rotated ship?
-      if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || vertical != info->vertical)
+      if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || horizontal != info->horizontal)
       {
-        info->vertical = vertical;
+        info->horizontal = horizontal;
         // Block moving when ship touches the border
-        if (!vertical && info->cury + ships[i] >= BOX_COUNT)
+        if (!horizontal && info->cury + ships[i] >= BOX_COUNT)
           info->cury--;
-        if (vertical && info->curx + ships[i] >= BOX_COUNT)
+        if (horizontal && info->curx + ships[i] >= BOX_COUNT)
           info->curx--;
         draw_board(info->board);
         redraw_ship(info, ships[i]);
@@ -251,7 +252,7 @@ game_info setup()
   }
   uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   // init info
-  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS};
+  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS};
 
   // game board setup
   setup_connection(onTurn);
@@ -266,21 +267,33 @@ int player_state(game_info *info)
   printf("entered player state\n");
   draw_board(info->board);
   draw_lcd();
+
   short shotx, shoty;
-  send_response(info->board, &shotx, &shoty);
-  int *box = &(info->board[shoty][shotx]);
-  printf("changing to value: %d\n", *box);
-  switch (*box)
+  receive_coords(&shotx, &shoty);
+
+  int *cell = &(info->board[shoty][shotx]);
+  if (*cell == SHIP && flood_filled(info->board, shotx, shoty))
   {
-  case SEA:
-    *box = SEA_HIT;
-    break;
-  case SHIP:
-    *box = SHIP_HIT;
-    break;
+    printf("Naše loď potopena!\n");
+    info->shipsLeftPlayer--;
   }
+  else if (*cell == SHIP)
+  {
+    *cell = SHIP_HIT;
+    printf("Naše loď zasažena!\n");
+  }
+  else
+  {
+    *cell = SEA_HIT;
+    printf("HAHAHA!!! Vedle jak ta jedle!\n");
+  }
+
+  send_response(*cell);
+
   draw_board(info->board);
   printf("leaving player state\n");
+  if (info->shipsLeftPlayer <= 0)
+    return LOST;
   return RUNNING;
 }
 
@@ -301,7 +314,7 @@ int enemy_state(game_info *info)
     }
 
     // Knobs pressed?
-    if ((knobs & 0x7000000) != 0)
+    if ((knobs & 0x7000000) != 0 && info->boardEnemy[info->cury][info->curx] == SEA)
     {
       while ((knobs & 0x7000000) != 0)
         knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
@@ -311,23 +324,14 @@ int enemy_state(game_info *info)
 
       // Shoot
       printf("BANG!!!!!!!\n");
-      int *box = &(info->boardEnemy[info->cury][info->curx]);
-
-      switch (send_coord(info->curx, info->cury))
+      int *cell = &(info->boardEnemy[info->cury][info->curx]);
+      *cell = send_coord(info->curx, info->cury);
+      if (*cell == SUNKEN_SHIP)
       {
-      case SEA:
-        *box = SEA_HIT;
-        break;
-      case SHIP:
-        *box = SHIP_HIT;
-        break;
-      case SEA_HIT:
-        *box = SEA_HIT;
-        break;
-      case SHIP_HIT:
-        *box = SHIP_HIT;
-        break;
+        flood_filled(info->boardEnemy, info->curx, info->cury);
+        info->shipsLeftEnemy--;
       }
+
       draw_board_enemy(info);
       break;
     }
@@ -337,6 +341,10 @@ int enemy_state(game_info *info)
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0;
       *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0;
     }
+  }
+  if (info->shipsLeftEnemy <= 0)
+  {
+    return WON;
   }
   printf("leaving enemy state\n");
   return RUNNING;
@@ -364,6 +372,16 @@ int main(int argc, char *argv[])
     delay(2000);
     onTurn = !onTurn;
   }
+
+  if (state == WON)
+  {
+    printf("YAAAY CHCIPL BASTARD!!\n");
+  }
+  else
+  {
+    printf("kurva\n");
+  }
+
   // printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
   // printf("RED: %d\n", hsv2rgb_lcd(255, 255, 225));
 

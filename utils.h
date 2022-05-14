@@ -10,6 +10,7 @@ bool flood_filled(int (*board)[10], short x, short y);
 bool check_side(int (*board)[10], int x, int y, int incX, int incY, int *length);
 
 // from APO templates
+void delay(int msec);
 unsigned int hsv2rgb_lcd(int hue, int saturation, int value);
 void draw_pixel(int x, int y, unsigned short color);
 void draw_pixel_big(int x, int y, unsigned short color);
