@@ -3,7 +3,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <string.h>
 #include <time.h>
+
+#define BIG_PIXEL_SCALE 2
 
 int get_coord(int start, int idx)
 {
@@ -71,9 +74,9 @@ void draw_board(int (*gameBoard)[10])
 void draw_pixel_big(int x, int y, unsigned short color)
 {
     int i, j;
-    for (i = 0; i < scale; i++)
+    for (i = 0; i < BIG_PIXEL_SCALE; i++)
     {
-        for (j = 0; j < scale; j++)
+        for (j = 0; j < BIG_PIXEL_SCALE; j++)
         {
             draw_pixel(x + i, y + j, color);
         }
@@ -90,7 +93,7 @@ int char_width(int ch)
     return width;
 }
 
-void draw_char(int x, int y, char ch, unsigned short color)
+void draw_char(int x, int y, char ch, unsigned short color, int scale)
 {
     int w = char_width(ch);
     const font_bits_t *ptr;
@@ -119,6 +122,16 @@ void draw_char(int x, int y, char ch, unsigned short color)
             }
             ptr++;
         }
+    }
+}
+
+void draw_string(int x, int y, char *string)
+{
+    int offset = 0;
+    for (size_t i = 0; i < strlen(string); i++)
+    {
+        draw_char(x + offset, y, string[i], light_green, 1);
+        offset += char_width(string[i]) + 10;
     }
 }
 

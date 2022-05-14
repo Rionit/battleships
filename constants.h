@@ -1,7 +1,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include "font_types.h"
-#define TOTAL_SHIPS 3
+#define TOTAL_SHIPS 1
+#define SAD_FACE 0x01
+#define SMILEY_FACE 0x02
 
 enum STATES
 {
@@ -16,13 +18,14 @@ const int BOX_COUNT;
 const int BOARD_LEN;
 const int BOX_SIZE;
 const int LINE_MOD;
-const int scale;
+const int header_scale;
 const int startX;
 const int startY;
 const int knob_precision;
 const int dark_green;
 const int light_green;
 const int ships[TOTAL_SHIPS];
+unsigned char *mem_base;
 
 unsigned short *fb;
 font_descriptor_t *fdes;

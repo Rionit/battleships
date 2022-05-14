@@ -16,17 +16,16 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "peripheries.h"
 #include "tcp.h"
 #include "utils.h"
 #include "constants.h"
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
-#include <sys/socket.h>
 
 enum GAME_STATES
 {
@@ -48,7 +47,6 @@ typedef struct
   int shipsLeftEnemy;
 } game_info;
 
-unsigned char *mem_base;
 bool onTurn = true;
 
 void draw_grid()
@@ -69,9 +67,9 @@ void draw_grid_chars()
   fdes = &font_rom8x16;
   for (int x = 1; x < 11; x++)
   {
-    draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * scale / 2) + scale, get_coord_y(0) - 1, first_row[x - 1], light_green);
-    draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * scale / 2) - scale,
-              get_coord_y(x) + (BOX_SIZE / 2) - (16 * scale / 2) + scale, (char)(x + 47), light_green);
+    draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * header_scale / 2) + header_scale, get_coord_y(0) - 1, first_row[x - 1], light_green, header_scale);
+    draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * header_scale / 2) - header_scale,
+              get_coord_y(x) + (BOX_SIZE / 2) - (16 * header_scale / 2) + header_scale, (char)(x + 47), light_green, header_scale);
   }
 }
 
@@ -214,6 +212,8 @@ void initial_draw(int (*board)[10])
   draw_grid_chars();
   draw_board(board);
   highlight_box(0, 0);
+  char *text = "Ahoj zKoUsKa te!!!! :)";
+  draw_string(20, 100, text);
   draw_lcd();
 }
 
@@ -272,6 +272,7 @@ int player_state(game_info *info)
   receive_coords(&shotx, &shoty);
 
   int *cell = &(info->board[shoty][shotx]);
+  led_line_left();
   if (*cell == SHIP && flood_filled(info->board, shotx, shoty))
   {
     printf("Naše loď potopena!\n");
@@ -288,9 +289,11 @@ int player_state(game_info *info)
     printf("HAHAHA!!! Vedle jak ta jedle!\n");
   }
 
-  send_response(*cell);
-
   draw_board(info->board);
+  draw_lcd();
+  react_to_cell(*cell, false);
+
+  send_response(*cell);
   printf("leaving player state\n");
   if (info->shipsLeftPlayer <= 0)
     return LOST;
@@ -318,14 +321,14 @@ int enemy_state(game_info *info)
     {
       while ((knobs & 0x7000000) != 0)
         knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-      // red RGB leds
-      *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0xFF0000;
-      *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0xFF0000;
 
       // Shoot
       printf("BANG!!!!!!!\n");
       int *cell = &(info->boardEnemy[info->cury][info->curx]);
       *cell = send_coord(info->curx, info->cury);
+
+      led_line_right();
+
       if (*cell == SUNKEN_SHIP)
       {
         flood_filled(info->boardEnemy, info->curx, info->cury);
@@ -333,13 +336,11 @@ int enemy_state(game_info *info)
       }
 
       draw_board_enemy(info);
+      draw_lcd();
+
+      react_to_cell(*cell, true);
+
       break;
-    }
-    else
-    {
-      // Turn off LEDs
-      *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0;
-      *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0;
     }
   }
   if (info->shipsLeftEnemy <= 0)
@@ -350,8 +351,14 @@ int enemy_state(game_info *info)
   return RUNNING;
 }
 
+void main_menu()
+{
+}
+
 int main(int argc, char *argv[])
 {
+
+  main_menu();
 
   game_info info = setup();
 
@@ -368,19 +375,23 @@ int main(int argc, char *argv[])
     {
       state = player_state(&info);
     }
-    draw_lcd();
     delay(2000);
     onTurn = !onTurn;
   }
 
   if (state == WON)
   {
+    turn_led_green();
+    draw_char(10, 50, SMILEY_FACE, light_green, 2);
     printf("YAAAY CHCIPL BASTARD!!\n");
   }
   else
   {
+    turn_led_red();
+    draw_char(10, 10, SAD_FACE, light_green, 2);
     printf("kurva\n");
   }
+  draw_lcd();
 
   // printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
   // printf("RED: %d\n", hsv2rgb_lcd(255, 255, 225));
