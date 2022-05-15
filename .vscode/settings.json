@@ -36,6 +36,11 @@
     "files.associations": {
         "font_types.h": "c",
         "string_view": "c",
-        "constants.h": "c"
+        "constants.h": "c",
+        "istream": "c",
+        "ostream": "c",
+        "socket.h": "c",
+        "unistd.h": "c",
+        "mzapo_regs.h": "c"
     }
 }

@@ -4,17 +4,19 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 //#define SERVER_IP "192.168.0.227"
 #define SERVER_IP "192.168.0.100"
+#define PORT 2000
 
 int socket_desc;
 
 void connect_to()
 {
-    struct sockaddr_in server_addr;
 
-    // Create socket:
+    // Create socket
+    struct sockaddr_in server_addr;
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
     if (socket_desc < 0)
@@ -25,12 +27,12 @@ void connect_to()
 
     printf("Socket created successfully\n");
 
-    // Set port and IP the same as server-side:
+    // Set port and IP the same as server-side
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
+    server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
 
-    // Send connection request to server:
+    // Send connection request to server
     if (connect(socket_desc, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         printf("Unable to connect\n");
@@ -41,7 +43,6 @@ void connect_to()
 
 void connect_from()
 {
-
     int client_sock;
     unsigned int client_size;
     struct sockaddr_in server_addr, client_addr;
@@ -58,7 +59,7 @@ void connect_from()
 
     // Set port and IP:
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
+    server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
 
     // Bind to the set port and IP:
@@ -87,13 +88,19 @@ void connect_from()
         exit(-1);
     }
     printf("Client connected at IP: %s and port: %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
     socket_desc = client_sock;
+}
+
+void setup_connection(bool starts)
+{
+    if (starts)
+        connect_to();
+    else
+        connect_from();
 }
 
 int send_coord(int curx, int cury)
 {
-
     char *message = malloc(sizeof(char) * 10);
     char server_message[20];
 
@@ -117,14 +124,15 @@ int send_coord(int curx, int cury)
 
 void send_ready()
 {
+    // send ready signal
     char client_message[6];
-
     if (send(socket_desc, "ready", 6, 0) < 0)
     {
         printf("Can't send\n");
         exit(-1);
     }
 
+    // wait for "ready" packet
     while (strcmp(client_message, "ready"))
     {
         if (recv(socket_desc, client_message, sizeof(client_message), 0) < 0)
@@ -132,7 +140,6 @@ void send_ready()
             printf("Couldn't receive\n");
             exit(-1);
         }
-
         printf("Msg from client: %s\n", client_message);
     }
 }
@@ -141,14 +148,12 @@ void receive_coords(short *shotx, short *shoty)
 {
 
     char client_message[20];
-
     if (recv(socket_desc, client_message, sizeof(client_message), 0) < 0)
     {
         printf("Couldn't receive\n");
         exit(-1);
     }
     printf("Msg from client: %s\n", client_message);
-
     sscanf(client_message, "%hd,%hd;", shotx, shoty);
 }
 
@@ -156,10 +161,14 @@ void send_response(int message)
 {
     char client_message[20];
     sprintf(client_message, "%d;", message);
-
     if (send(socket_desc, client_message, strlen(client_message), 0) < 0)
     {
         printf("Can't send\n");
         exit(-1);
     }
+}
+
+void close_socket()
+{
+    close(socket_desc);
 }

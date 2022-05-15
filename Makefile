@@ -7,7 +7,7 @@ CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 #LDLIBS = -lm
 
-SOURCES = main.c tcp.c peripheries.c constants.c utils.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c
+SOURCES = main.c tcp.c peripheries.c constants.c utils.c mzapo_phys.c mzapo_parlcd.c
 SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = main
 #TARGET_IP ?= 192.168.202.127

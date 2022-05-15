@@ -23,7 +23,7 @@ int get_coord_y(int idx)
 
 void draw_pixel(int x, int y, unsigned short color)
 {
-    fb[(x % 480) + 480 * (y % 320)] = color;
+    fb[(x % sizeX) + sizeX * (y % sizeY)] = color;
 }
 
 void highlight_box(int idxX, int idxY)
@@ -58,13 +58,13 @@ void fill_board_box(int idxX, int idxY, int color)
     fill_box(idxX + 1, idxY + 1, color);
 }
 
-void draw_board(int (*gameBoard)[10])
+void draw_board(int (*board)[10])
 {
     for (size_t y = 0; y < BOARD_LEN; y++)
     {
         for (size_t x = 0; x < BOARD_LEN; x++)
         {
-            fill_board_box(x, y, gameBoard[y][x]);
+            fill_board_box(x, y, board[y][x]);
         }
     }
 }
@@ -113,9 +113,7 @@ void draw_char(int x, int y, char ch, unsigned short color)
             for (j = 0; j < w; j++)
             {
                 if ((val & 0x8000) != 0)
-                {
                     draw_pixel_big(x + scale * j, y + scale * i, color);
-                }
                 val <<= 1;
             }
             ptr++;
@@ -143,56 +141,6 @@ int string_width(int spaceLen, char *string)
     return width;
 }
 
-unsigned int hsv2rgb_lcd(int hue, int saturation, int value)
-{
-    hue = (hue % 360);
-    float f = ((hue % 60) / 60.0);
-    int p = (value * (255 - saturation)) / 255;
-    unsigned int q = (value * (255 - (saturation * f))) / 255;
-    unsigned int t = (value * (255 - (saturation * (1.0 - f)))) / 255;
-    unsigned int r, g, b;
-    if (hue < 60)
-    {
-        r = value;
-        g = t;
-        b = p;
-    }
-    else if (hue < 120)
-    {
-        r = q;
-        g = value;
-        b = p;
-    }
-    else if (hue < 180)
-    {
-        r = p;
-        g = value;
-        b = t;
-    }
-    else if (hue < 240)
-    {
-        r = p;
-        g = q;
-        b = value;
-    }
-    else if (hue < 300)
-    {
-        r = t;
-        g = p;
-        b = value;
-    }
-    else
-    {
-        r = value;
-        g = p;
-        b = q;
-    }
-    r >>= 3;
-    g >>= 2;
-    b >>= 3;
-    return (((r & 0x1f) << 11) | ((g & 0x3f) << 5) | (b & 0x1f));
-}
-
 void delay(int msec)
 {
     struct timespec wait_delay = {.tv_sec = msec / 1000,
@@ -200,17 +148,56 @@ void delay(int msec)
     clock_nanosleep(1, 0, &wait_delay, NULL);
 }
 
+void draw_grid()
+{
+    for (int y = 0; y < GRID_SIZE; y++)
+    {
+        for (int x = 0; x < GRID_SIZE; x++)
+        {
+            unsigned int color = x % LINE_MOD && y % LINE_MOD ? SEA : SHIP;
+            draw_pixel(startX + x, startY + y, color);
+        }
+    }
+}
+
+void draw_grid_chars()
+{
+    char *first_row = "ABCDEFGHIJ\0";
+    fdes = &font_rom8x16;
+    for (int x = 1; x < 11; x++)
+    {
+        draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * scale / 2) + scale, get_coord_y(0) - 1, first_row[x - 1], light_green);
+        draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * scale / 2) - scale,
+                  get_coord_y(x) + (BOX_SIZE / 2) - (16 * scale / 2) + scale, (char)(x + 47), light_green);
+    }
+}
+
+void clear_place(int startx, int starty, int endx, int endy)
+{
+    for (size_t i = startx; i < endx; i++)
+    {
+        for (size_t j = starty; j < endy; j++)
+        {
+            draw_pixel(i, j, 0);
+        }
+    }
+}
+
+void clear_screen()
+{
+    clear_place(0, 0, 480, 320);
+}
+
+//------ FLOODFILL -------
+
 bool check_side(int (*board)[10], short x, short y, int incX, int incY, int *length)
 {
-
     y += incY == 0 ? 0 : incY;
     x += incX == 0 ? 0 : incX;
     while ((y <= 9) && (y >= 0) && (x <= 9) && x >= 0 && board[y][x] != SEA && board[y][x] != SEA_HIT)
     {
         if (board[y][x] == SHIP)
-        {
             return false;
-        }
         *length = *length + 1;
         y += incY == 0 ? 0 : incY;
         x += incX == 0 ? 0 : incX;
@@ -232,9 +219,7 @@ bool flood_filled(int (*board)[10], short x, short y)
     len1 = len2 = 0;
 
     if (!check_side(board, x, y, incX, incY, &len1) || !check_side(board, x, y, -incX, -incY, &len2))
-    {
         return false;
-    }
 
     if (incX == 1)
     {
@@ -250,7 +235,5 @@ bool flood_filled(int (*board)[10], short x, short y)
             board[i][x] = SUNKEN_SHIP;
         }
     }
-
-    printf("3 \n");
     return true;
 }

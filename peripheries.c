@@ -1,69 +1,85 @@
-#include "utils.h"
-#include "constants.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+
+#include "utils.h"
+#include "constants.h"
+#include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
+
+unsigned char *parlcd_mem_base;
+unsigned char *mem_base;
+
+void setup_peripheries()
+{
+    mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
+    // lcd
+    parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
+    if (parlcd_mem_base == NULL || mem_base == NULL)
+        exit(1);
+    parlcd_hx8357_init(parlcd_mem_base);
+}
+
+void draw_lcd()
+{
+    parlcd_write_cmd(parlcd_mem_base, 0x2c);
+    for (int ptr = 0; ptr < 480 * 320; ptr++)
+    {
+        parlcd_write_data(parlcd_mem_base, fb[ptr]);
+    }
+}
+
+uint32_t get_knobs()
+{
+    return *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+}
 
 void led_line_left()
 {
     for (int i = 0; i < 30; i++)
     {
-        uint32_t val_line = (1 << i);
+        uint32_t val_line = 1 << i;
         *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-
         delay(50);
-        // val_line = (1 << i) | val_line;
     }
 }
 
 void led_line_right()
 {
-    for (size_t i = 29; i > 0; i--)
+    for (size_t i = 29; i >= 0; i--)
     {
-        uint32_t val_line = (1 << i);
+        uint32_t val_line = 1 << i;
         *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-
         delay(50);
     }
 }
 
-void warning_led_police(int colorLeft, int colorRight, int intensity, int n)
+void turn_led_color(int color)
 {
-    for (size_t i = 0; i < n; i++)
-    {
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = colorLeft;
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0;
-        delay(intensity);
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = colorRight;
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0;
-        delay(intensity);
-    }
+    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = color;
+    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = color;
 }
 
 void warning_led(int color, int intensity, int n)
 {
     for (size_t i = 0; i < n; i++)
     {
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = color;
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = color;
+        turn_led_color(color);
         delay(intensity);
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0;
-        *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0;
+        turn_led_color(0);
         delay(intensity);
     }
 }
 
 void turn_led_red()
 {
-    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0xFF0000;
-    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0xFF0000;
+    turn_led_color(0xFF0000);
 }
 
 void turn_led_green()
 {
-    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB1_o) = 0x00FF00;
-    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_RGB2_o) = 0x00FF00;
+    turn_led_color(0x00FF00);
 }
 
 void red_warning_led()

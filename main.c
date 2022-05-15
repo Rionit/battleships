@@ -1,10 +1,7 @@
 /*******************************************************************
-  Project main function template for MicroZed based MZ_APO board
-  designed by Petr Porazil at PiKRON
+  main.c      - main file
 
-  change_me.c      - main file
-
-  include your name there and license for distribution.
+  TODO:
 
  *******************************************************************/
 
@@ -13,19 +10,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <arpa/inet.h>
 #include <string.h>
 
 #include "peripheries.h"
 #include "tcp.h"
 #include "utils.h"
 #include "constants.h"
-#include "mzapo_parlcd.h"
-#include "mzapo_phys.h"
-#include "mzapo_regs.h"
 
 #define CENTERED_SCREEN_X(size) ((480 / 2) - (size / 2))
 
@@ -49,30 +41,10 @@ typedef struct
   int shipsLeftEnemy;
 } game_info;
 
-bool onTurn = true;
-
-void draw_grid()
+void draw_board_enemy(game_info *info)
 {
-  for (int y = 0; y < GRID_SIZE; y++)
-  {
-    for (int x = 0; x < GRID_SIZE; x++)
-    {
-      unsigned int color = x % LINE_MOD && y % LINE_MOD ? SEA : SHIP;
-      draw_pixel(startX + x, startY + y, color);
-    }
-  }
-}
-
-void draw_grid_chars()
-{
-  char *first_row = "ABCDEFGHIJ\0";
-  fdes = &font_rom8x16;
-  for (int x = 1; x < 11; x++)
-  {
-    draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * scale / 2) + scale, get_coord_y(0) - 1, first_row[x - 1], light_green);
-    draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * scale / 2) - scale,
-              get_coord_y(x) + (BOX_SIZE / 2) - (16 * scale / 2) + scale, (char)(x + 47), light_green);
-  }
+  draw_board(info->boardEnemy);
+  highlight_box(info->curx, info->cury);
 }
 
 void redraw_ship(game_info *info, int length)
@@ -86,12 +58,6 @@ void redraw_ship(game_info *info, int length)
   }
 }
 
-void draw_board_enemy(game_info *info)
-{
-  draw_board(info->boardEnemy);
-  highlight_box(info->curx, info->cury);
-}
-
 void place_ship(game_info *info, int length)
 {
   printf("horizontal: %d", info->horizontal);
@@ -101,16 +67,6 @@ void place_ship(game_info *info, int length)
       info->board[info->cury][info->curx + i] = SHIP;
     else
       info->board[info->cury + i][info->curx] = SHIP;
-  }
-}
-
-unsigned char *parlcd_mem_base;
-void draw_lcd()
-{
-  parlcd_write_cmd(parlcd_mem_base, 0x2c);
-  for (int ptr = 0; ptr < 480 * 320; ptr++)
-  {
-    parlcd_write_data(parlcd_mem_base, fb[ptr]);
   }
 }
 
@@ -154,7 +110,7 @@ bool can_place(game_info *info, int length)
     else
       y = info->cury + i;
 
-    printf("x+i: %d, y+i: %d\n", x, y);
+    // printf("x+i: %d, y+i: %d\n", x, y);
     bool l = (x - 1 >= 0) ? (info->board[y][x - 1] == SHIP) : false;
     bool r = (x + 1 <= 9) ? (info->board[y][x + 1] == SHIP) : false;
     bool b = (y + 1 <= 9) ? (info->board[y + 1][x] == SHIP) : false;
@@ -167,20 +123,23 @@ bool can_place(game_info *info, int length)
   return true;
 }
 
-void setup_board(game_info *info)
+void place_ships(game_info *info)
 {
   for (size_t i = 0; i < TOTAL_SHIPS; i++)
   {
     info->curx = 0;
     info->cury = 0;
     redraw_ship(info, ships[i]);
+    clear_place(0, 0, startX, startY + sizeY);
+    draw_char(15, 15, (TOTAL_SHIPS - i) + '0', light_green);
+    draw_lcd();
 
-    uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    uint32_t knobs = get_knobs();
     // break when knob is pressed and ship can be placed
     while (((knobs & 0x7000000) == 0) || !can_place(info, ships[i]))
     {
-      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o); // read knobs
-      bool horizontal = (bool)((((knobs >> 16) & 0xff) / 27) % 2);        // ship rotation
+      knobs = get_knobs();
+      bool horizontal = (bool)((((knobs >> 16) & 0xff) / 27) % 2); // ship rotation
       // Moved with cursor or rotated ship?
       if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || horizontal != info->horizontal)
       {
@@ -200,45 +159,16 @@ void setup_board(game_info *info)
     draw_board(info->board);
 
     // wait for player to unpress the knob
-    while ((knobs & 0x7000000) != 0)
+    while ((get_knobs() & 0x7000000) != 0)
     {
-      knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     }
     delay(10);
   }
+  send_ready();
 }
 
-void initial_draw(int (*board)[10])
+bool main_menu()
 {
-  draw_grid();
-  draw_grid_chars();
-  draw_board(board);
-  highlight_box(0, 0);
-  draw_lcd();
-}
-
-void setup_connection(bool starts)
-{
-  if (starts)
-    connect_to();
-  else
-    connect_from();
-}
-
-void clear_screen()
-{
-  for (size_t i = 0; i < 480; i++)
-  {
-    for (size_t j = 0; j < 320; j++)
-    {
-      draw_pixel(i, j, 0);
-    }
-  }
-}
-
-void main_menu()
-{
-  fdes = &font_rom8x16;
   char *textsel = "SELECT PLAYER";
   char *textp1 = "PLAYER 1";
   char *textp2 = "PLAYER 2";
@@ -254,12 +184,12 @@ void main_menu()
 
   draw_string(CENTERED_SCREEN_X(string_width(10, textsel)), 122, textsel, light_green);
 
-  uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  uint32_t knobs = get_knobs();
 
   // while button is not pressed
   while ((knobs & 0x7000000) == 0)
   {
-    knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    knobs = get_knobs();
     // choose player by rotating first knob in any direction
     player = (bool)((((knobs >> 16) & 0xff) / 27) % 2);
     draw_string(CENTERED_SCREEN_X(string_width(10, textp1)), 158, textp1, player ? selectedColor : defaultColor);
@@ -267,7 +197,7 @@ void main_menu()
     draw_lcd();
   } // WAIT FOR RELEASE
   while ((knobs & 0x7000000) != 0)
-    knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    knobs = get_knobs();
 
   // TODO: SET IP? you can uncomment to see how it works rn
   /*
@@ -280,7 +210,7 @@ int cur = 0;
 while ((knobs & 0x7000000) == 0)
 {
 
-  knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  knobs = get_knobs();
   // choose player by rotating first knob in any direction
   cur = (bool)((((knobs >> 16) & 0xff) / 27) % 2);
   if (last != cur)
@@ -294,53 +224,14 @@ while ((knobs & 0x7000000) == 0)
 
 } // WAIT FOR RELEASE
 while ((knobs & 0x7000000) != 0)
-  knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  knobs = get_knobs();
 
 */
 
   // draws text in top right corner
   draw_string(480 - string_width(0, p1), 12, player ? p1 : p2, light_green);
   draw_lcd();
-
-  onTurn = player;
-}
-
-game_info setup()
-{
-
-  // frame buffer
-  fb = (unsigned short *)malloc(320 * 480 * 2);
-
-  // setup display
-  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
-  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
-  if (parlcd_mem_base == NULL || mem_base == NULL)
-    exit(1);
-  parlcd_hx8357_init(parlcd_mem_base);
-
-  int *gameBoard_p = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
-  int(*board)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p;
-  int *gameBoard_p2 = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
-  int(*boardEnemy)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p2;
-  for (int i = 0; i < 10; i++)
-  {
-    for (int j = 0; j < 10; j++)
-    {
-      boardEnemy[i][j] = SEA;
-      board[i][j] = SEA;
-    }
-  }
-  uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-  // init info
-  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS};
-
-  // game board setup
-  main_menu();
-  setup_connection(onTurn);
-  initial_draw(info.board);
-  setup_board(&info);
-  send_ready();
-  return info;
+  return player;
 }
 
 int player_state(game_info *info)
@@ -348,7 +239,6 @@ int player_state(game_info *info)
   printf("entered player state\n");
   draw_board(info->board);
   draw_lcd();
-
   short shotx, shoty;
   receive_coords(&shotx, &shoty);
 
@@ -369,13 +259,14 @@ int player_state(game_info *info)
     *cell = SEA_HIT;
     printf("HAHAHA!!! Vedle jak ta jedle!\n");
   }
+  send_response(*cell);
 
   draw_board(info->board);
   draw_lcd();
   react_to_cell(*cell, false);
 
-  send_response(*cell);
   printf("leaving player state\n");
+  // 0 ships left?
   if (info->shipsLeftPlayer <= 0)
     return LOST;
   return RUNNING;
@@ -386,13 +277,15 @@ int enemy_state(game_info *info)
   printf("entered enemy state\n");
   draw_board_enemy(info);
   draw_lcd();
-  while (1)
+
+  bool shot = false;
+  while (shot)
   {
-    uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    uint32_t knobs = get_knobs();
     // Knobs rotated? -> cursor changed
     if (set_cursor(&(info->knobX), knobs & 0xff, &(info->curx), true) || set_cursor(&(info->knobY), (knobs >> 8) & 0xff, &(info->cury), true))
     {
-      // printf("curx:%d cury:%d\n", curx, cury);
+      printf("curx:%d cury:%d\n", info->curx, info->cury);
       draw_board_enemy(info);
       draw_lcd();
     }
@@ -400,78 +293,98 @@ int enemy_state(game_info *info)
     // Knobs pressed?
     if ((knobs & 0x7000000) != 0 && info->boardEnemy[info->cury][info->curx] == SEA)
     {
-      while ((knobs & 0x7000000) != 0)
-        knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
+      while ((get_knobs() & 0x7000000) != 0)
+      {
+      }
       // Shoot
       printf("BANG!!!!!!!\n");
+      shot = true;
       int *cell = &(info->boardEnemy[info->cury][info->curx]);
       *cell = send_coord(info->curx, info->cury);
 
       led_line_right();
-
       if (*cell == SUNKEN_SHIP)
       {
         flood_filled(info->boardEnemy, info->curx, info->cury);
         info->shipsLeftEnemy--;
       }
-
       draw_board_enemy(info);
       draw_lcd();
-
       react_to_cell(*cell, true);
-
-      break;
     }
   }
-  if (info->shipsLeftEnemy <= 0)
-  {
-    return WON;
-  }
   printf("leaving enemy state\n");
+  // 0 ships left?
+  if (info->shipsLeftEnemy <= 0)
+    return WON;
   return RUNNING;
+}
+
+game_info init()
+{
+  setup_peripheries();
+  fb = (unsigned short *)malloc(320 * 480 * 2);
+  fdes = &font_rom8x16;
+
+  int *gameBoard_p = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
+  int(*board)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p;
+  int *gameBoard_p2 = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
+  int(*boardEnemy)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p2;
+  for (int i = 0; i < 10; i++)
+  {
+    for (int j = 0; j < 10; j++)
+    {
+      boardEnemy[i][j] = SEA;
+      board[i][j] = SEA;
+    }
+  }
+  uint32_t knobs = get_knobs();
+  // init info
+  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS};
+  return info;
 }
 
 int main(int argc, char *argv[])
 {
+  game_info info = init();
+  bool onTurn = main_menu();
+  setup_connection(onTurn);
+  place_ships(&info);
 
-  game_info info = setup();
+  draw_grid();
+  draw_grid_chars();
 
+  // game loop -> players are switching until one of them win
   int state = RUNNING;
-
   while (state == RUNNING)
   {
     printf("new turn\n");
-    if (onTurn)
-    {
-      state = enemy_state(&info);
-    }
-    else
-    {
-      state = player_state(&info);
-    }
+    state = onTurn ? enemy_state(&info) : player_state(&info);
     delay(2000);
     onTurn = !onTurn;
   }
 
+  // game ended
   if (state == WON)
   {
     turn_led_green();
     draw_char(10, 50, SMILEY_FACE, light_green);
-    printf("YAAAY CHCIPL BASTARD!!\n");
+    printf("YAAAY CHCIPL BAST*RD!!\n");
   }
   else
   {
     turn_led_red();
     draw_char(10, 10, SAD_FACE, light_green);
-    printf("kurva\n");
+    printf("kur*a\n");
   }
   draw_lcd();
 
-  // printf("WHITE: %d\n", hsv2rgb_lcd(180, 100, 225));
-  // printf("RED: %d\n", hsv2rgb_lcd(255, 255, 225));
-
+  delay(10000);
   printf("Goodbye world\n");
 
+  free(fb);
+  free(info.board);
+  free(info.boardEnemy);
+  close_socket();
   return 0;
 }

@@ -13,6 +13,9 @@ enum STATES
     SHIP_HIT = 57344,
     SUNKEN_SHIP = 14364
 };
+
+const int sizeX;
+const int sizeY;
 const int GRID_SIZE;
 const int BOX_COUNT;
 const int BOARD_LEN;
@@ -25,7 +28,6 @@ const int knob_precision;
 const int dark_green;
 const int light_green;
 const int ships[TOTAL_SHIPS];
-unsigned char *mem_base;
 
 unsigned short *fb;
 font_descriptor_t *fdes;
