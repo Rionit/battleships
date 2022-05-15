@@ -1,9 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include "font_types.h"
-#define TOTAL_SHIPS 1
-#define SAD_FACE 0x01
-#define SMILEY_FACE 0x02
+#define TOTAL_SHIPS 2
 
 enum STATES
 {

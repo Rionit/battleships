@@ -21,11 +21,15 @@
 
 #define CENTERED_SCREEN_X(size) ((480 / 2) - (size / 2))
 
+// text shown in top right corner
+char *p1 = "P1";
+char *p2 = "P2";
+
 enum GAME_STATES
 {
   RUNNING,
-  WON,
-  LOST
+  LOST,
+  WON
 };
 
 typedef struct
@@ -39,6 +43,7 @@ typedef struct
   int (*boardEnemy)[10];
   int shipsLeftPlayer;
   int shipsLeftEnemy;
+  bool player;
 } game_info;
 
 void draw_board_enemy(game_info *info)
@@ -173,17 +178,11 @@ bool main_menu()
   char *textp1 = "PLAYER 1";
   char *textp2 = "PLAYER 2";
 
-  // text shown in top right corner
-  char *p1 = "P1";
-  char *p2 = "P2";
-
   int selectedColor = light_green;
   int defaultColor = dark_green;
 
-  bool player = false;
-
   draw_string(CENTERED_SCREEN_X(string_width(10, textsel)), 122, textsel, light_green);
-
+  bool player = false;
   uint32_t knobs = get_knobs();
 
   // while button is not pressed
@@ -229,13 +228,15 @@ while ((knobs & 0x7000000) != 0)
 */
 
   // draws text in top right corner
-  draw_string(480 - string_width(0, p1), 12, player ? p1 : p2, light_green);
   draw_lcd();
   return player;
 }
 
 int player_state(game_info *info)
 {
+  draw_string(480 - string_width(0, info->player ? p1 : p2), 12, info->player ? p1 : p2, light_green);
+  clear_place(0, 0, startX, startY + sizeY);
+  draw_char(15, 15, info->shipsLeftPlayer + '0', light_green);
   printf("entered player state\n");
   draw_board(info->board);
   draw_lcd();
@@ -248,6 +249,8 @@ int player_state(game_info *info)
   {
     printf("Naše loď potopena!\n");
     info->shipsLeftPlayer--;
+    clear_place(0, 0, startX, startY + sizeY);
+    draw_char(15, 15, info->shipsLeftPlayer + '0', light_green);
   }
   else if (*cell == SHIP)
   {
@@ -266,6 +269,7 @@ int player_state(game_info *info)
   react_to_cell(*cell, false);
 
   printf("leaving player state\n");
+  clear_place(startX + GRID_SIZE + 1, 0, sizeX, sizeY);
   // 0 ships left?
   if (info->shipsLeftPlayer <= 0)
     return LOST;
@@ -275,11 +279,14 @@ int player_state(game_info *info)
 int enemy_state(game_info *info)
 {
   printf("entered enemy state\n");
+  draw_string(480 - string_width(0, info->player ? p2 : p1), 12, info->player ? p2 : p1, light_green);
+  clear_place(0, 0, startX, startY + sizeY);
+  draw_char(15, 15, info->shipsLeftEnemy + '0', light_green);
   draw_board_enemy(info);
   draw_lcd();
 
   bool shot = false;
-  while (shot)
+  while (!shot)
   {
     uint32_t knobs = get_knobs();
     // Knobs rotated? -> cursor changed
@@ -307,6 +314,8 @@ int enemy_state(game_info *info)
       {
         flood_filled(info->boardEnemy, info->curx, info->cury);
         info->shipsLeftEnemy--;
+        clear_place(0, 0, startX, startY + sizeY);
+        draw_char(15, 15, info->shipsLeftEnemy + '0', light_green);
       }
       draw_board_enemy(info);
       draw_lcd();
@@ -314,6 +323,7 @@ int enemy_state(game_info *info)
     }
   }
   printf("leaving enemy state\n");
+  clear_place(startX + GRID_SIZE + 1, 0, sizeX, sizeY);
   // 0 ships left?
   if (info->shipsLeftEnemy <= 0)
     return WON;
@@ -340,19 +350,54 @@ game_info init()
   }
   uint32_t knobs = get_knobs();
   // init info
-  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS};
+  game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS, false};
   return info;
+}
+
+void game_over(int state)
+{
+  clear_screen();
+
+  char *textgame = "GAME OVER";
+
+  char *text;
+  // game ended
+  if (state == WON)
+  {
+    green_warning_led();
+    turn_led_green();
+    text = "YOU WON!";
+    printf("YAAAY CHCIPL BAST*RD!!\n");
+  }
+  else
+  {
+    red_warning_led();
+    turn_led_red();
+    text = "YOU LOST!";
+    printf("kur*a\n");
+  }
+
+  draw_char(CENTERED_SCREEN_X(char_width(state)), 122, state, light_green);
+  draw_string(CENTERED_SCREEN_X(string_width(10, textgame)), 96, textgame, light_green);
+  draw_string(CENTERED_SCREEN_X(string_width(10, text)), 150, text, light_green);
+  draw_lcd();
+
+  // Wait for user to click to end the program
+  while ((get_knobs() & 0x7000000) == 0)
+  {
+  }
 }
 
 int main(int argc, char *argv[])
 {
   game_info info = init();
   bool onTurn = main_menu();
+  info.player = onTurn;
   setup_connection(onTurn);
-  place_ships(&info);
-
+  clear_screen();
   draw_grid();
   draw_grid_chars();
+  place_ships(&info);
 
   // game loop -> players are switching until one of them win
   int state = RUNNING;
@@ -360,27 +405,18 @@ int main(int argc, char *argv[])
   {
     printf("new turn\n");
     state = onTurn ? enemy_state(&info) : player_state(&info);
-    delay(2000);
+    delay(1500);
     onTurn = !onTurn;
   }
 
-  // game ended
-  if (state == WON)
-  {
-    turn_led_green();
-    draw_char(10, 50, SMILEY_FACE, light_green);
-    printf("YAAAY CHCIPL BAST*RD!!\n");
-  }
-  else
-  {
-    turn_led_red();
-    draw_char(10, 10, SAD_FACE, light_green);
-    printf("kur*a\n");
-  }
   draw_lcd();
 
-  delay(10000);
+  game_over(state);
+
   printf("Goodbye world\n");
+  clear_screen();
+  draw_lcd();
+  turn_led_off();
 
   free(fb);
   free(info.board);

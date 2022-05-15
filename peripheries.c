@@ -37,22 +37,24 @@ uint32_t get_knobs()
 
 void led_line_left()
 {
-    for (int i = 0; i < 30; i++)
+    for (int i = 0; i < 32; i++)
     {
         uint32_t val_line = 1 << i;
         *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
         delay(50);
     }
+    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = 0;
 }
 
 void led_line_right()
 {
-    for (size_t i = 29; i >= 0; i--)
+    for (size_t i = 31; i > 0; i--)
     {
         uint32_t val_line = 1 << i;
         *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
         delay(50);
     }
+    *(volatile uint32_t *)(mem_base + SPILED_REG_LED_LINE_o) = 0;
 }
 
 void turn_led_color(int color)
@@ -70,6 +72,11 @@ void warning_led(int color, int intensity, int n)
         turn_led_color(0);
         delay(intensity);
     }
+}
+
+void turn_led_off()
+{
+    turn_led_color(0);
 }
 
 void turn_led_red()
