@@ -5,7 +5,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define SERVER_IP "192.168.0.227"
+//#define SERVER_IP "192.168.0.227"
+#define SERVER_IP "192.168.0.100"
 
 int socket_desc;
 

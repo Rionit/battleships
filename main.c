@@ -27,6 +27,8 @@
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
 
+#define CENTERED_SCREEN_X(size) ((480 / 2) - (size / 2))
+
 enum GAME_STATES
 {
   RUNNING,
@@ -67,9 +69,9 @@ void draw_grid_chars()
   fdes = &font_rom8x16;
   for (int x = 1; x < 11; x++)
   {
-    draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * header_scale / 2) + header_scale, get_coord_y(0) - 1, first_row[x - 1], light_green, header_scale);
-    draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * header_scale / 2) - header_scale,
-              get_coord_y(x) + (BOX_SIZE / 2) - (16 * header_scale / 2) + header_scale, (char)(x + 47), light_green, header_scale);
+    draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * scale / 2) + scale, get_coord_y(0) - 1, first_row[x - 1], light_green);
+    draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * scale / 2) - scale,
+              get_coord_y(x) + (BOX_SIZE / 2) - (16 * scale / 2) + scale, (char)(x + 47), light_green);
   }
 }
 
@@ -212,8 +214,6 @@ void initial_draw(int (*board)[10])
   draw_grid_chars();
   draw_board(board);
   highlight_box(0, 0);
-  char *text = "Ahoj zKoUsKa te!!!! :)";
-  draw_string(20, 100, text);
   draw_lcd();
 }
 
@@ -223,6 +223,86 @@ void setup_connection(bool starts)
     connect_to();
   else
     connect_from();
+}
+
+void clear_screen()
+{
+  for (size_t i = 0; i < 480; i++)
+  {
+    for (size_t j = 0; j < 320; j++)
+    {
+      draw_pixel(i, j, 0);
+    }
+  }
+}
+
+void main_menu()
+{
+  fdes = &font_rom8x16;
+  char *textsel = "SELECT PLAYER";
+  char *textp1 = "PLAYER 1";
+  char *textp2 = "PLAYER 2";
+
+  // text shown in top right corner
+  char *p1 = "P1";
+  char *p2 = "P2";
+
+  int selectedColor = light_green;
+  int defaultColor = dark_green;
+
+  bool player = false;
+
+  draw_string(CENTERED_SCREEN_X(string_width(10, textsel)), 122, textsel, light_green);
+
+  uint32_t knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+
+  // while button is not pressed
+  while ((knobs & 0x7000000) == 0)
+  {
+    knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    // choose player by rotating first knob in any direction
+    player = (bool)((((knobs >> 16) & 0xff) / 27) % 2);
+    draw_string(CENTERED_SCREEN_X(string_width(10, textp1)), 158, textp1, player ? selectedColor : defaultColor);
+    draw_string(CENTERED_SCREEN_X(string_width(10, textp2)), 184, textp2, player ? defaultColor : selectedColor);
+    draw_lcd();
+  } // WAIT FOR RELEASE
+  while ((knobs & 0x7000000) != 0)
+    knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+
+  // TODO: SET IP? you can uncomment to see how it works rn
+  /*
+
+int number = 0;
+int last = 0;
+int cur = 0;
+
+// while button is not pressed
+while ((knobs & 0x7000000) == 0)
+{
+
+  knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  // choose player by rotating first knob in any direction
+  cur = (bool)((((knobs >> 16) & 0xff) / 27) % 2);
+  if (last != cur)
+  {
+    number = number + 1 > 9 ? 0 : number + 1;
+    last = cur;
+  }
+  draw_char(240, 158, number + '0', light_green);
+  draw_lcd();
+  clear_screen();
+
+} // WAIT FOR RELEASE
+while ((knobs & 0x7000000) != 0)
+  knobs = *(volatile uint32_t *)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+
+*/
+
+  // draws text in top right corner
+  draw_string(480 - string_width(0, p1), 12, player ? p1 : p2, light_green);
+  draw_lcd();
+
+  onTurn = player;
 }
 
 game_info setup()
@@ -255,6 +335,7 @@ game_info setup()
   game_info info = (game_info){0, 0, knobs & 0xff, (knobs >> 8) & 0xff, 0, board, boardEnemy, TOTAL_SHIPS, TOTAL_SHIPS};
 
   // game board setup
+  main_menu();
   setup_connection(onTurn);
   initial_draw(info.board);
   setup_board(&info);
@@ -351,14 +432,8 @@ int enemy_state(game_info *info)
   return RUNNING;
 }
 
-void main_menu()
-{
-}
-
 int main(int argc, char *argv[])
 {
-
-  main_menu();
 
   game_info info = setup();
 
@@ -382,13 +457,13 @@ int main(int argc, char *argv[])
   if (state == WON)
   {
     turn_led_green();
-    draw_char(10, 50, SMILEY_FACE, light_green, 2);
+    draw_char(10, 50, SMILEY_FACE, light_green);
     printf("YAAAY CHCIPL BASTARD!!\n");
   }
   else
   {
     turn_led_red();
-    draw_char(10, 10, SAD_FACE, light_green, 2);
+    draw_char(10, 10, SAD_FACE, light_green);
     printf("kurva\n");
   }
   draw_lcd();

@@ -18,7 +18,7 @@ const int BOX_COUNT;
 const int BOARD_LEN;
 const int BOX_SIZE;
 const int LINE_MOD;
-const int header_scale;
+const int scale;
 const int startX;
 const int startY;
 const int knob_precision;
