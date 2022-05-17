@@ -6,15 +6,13 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
-//#define SERVER_IP "192.168.0.227"
-#define SERVER_IP "192.168.0.100"
-#define PORT 2000
+#define SERVER_IP "192.168.223.207"
+#define PORT 2001
 
 int socket_desc;
 
 void connect_to()
 {
-
     // Create socket
     struct sockaddr_in server_addr;
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);

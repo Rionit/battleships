@@ -12,8 +12,7 @@ const int scale = 2;
 const int startX = (sizeX - GRID_SIZE) / 2;
 const int startY = (sizeY - GRID_SIZE) / 2;
 const int knob_precision = 10;
-const int ships[] = {
-    2, 2};
+const int ships[] = { 2, 3, 4 };
 
 const int dark_green = 384;
 const int light_green = 40928;

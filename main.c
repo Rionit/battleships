@@ -140,18 +140,25 @@ void place_ships(game_info *info)
       // Moved with cursor or rotated ship?
       if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || horizontal != info->horizontal)
       {
-        info->horizontal = horizontal;
+        // handle ship rotation
+        if(info->horizontal != horizontal){
+          info->horizontal = horizontal;
+          if (!horizontal && info->cury + ships[i] >= BOX_COUNT)
+            info->cury = info->cury - (info->cury + ships[i] - BOX_COUNT);
+          if (horizontal && info->curx + ships[i] >= BOX_COUNT)
+            info->curx = info->curx - (info->curx + ships[i] - BOX_COUNT);
+        }
         // Block moving when ship touches the border
         if (!horizontal && info->cury + ships[i] >= BOX_COUNT)
           info->cury--;
         if (horizontal && info->curx + ships[i] >= BOX_COUNT)
           info->curx--;
+         
         draw_board(info->board);
         redraw_ship(info, ships[i]);
         draw_lcd();
       }
     }
-
     place_ship(info, ships[i]);
     draw_board(info->board);
 
@@ -161,6 +168,9 @@ void place_ships(game_info *info)
     }
     delay(10);
   }
+  clear_place(0, 0, startX, startY + sizeY);
+  draw_char(15, 15, '0', light_green);  
+  draw_lcd();
   send_ready();
 }
 
