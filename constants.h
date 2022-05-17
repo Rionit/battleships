@@ -12,21 +12,28 @@ enum STATES
     SUNKEN_SHIP = 14364
 };
 
-const int sizeX;
-const int sizeY;
-const int GRID_SIZE;
-const int BOX_COUNT;
-const int BOARD_LEN;
-const int BOX_SIZE;
-const int LINE_MOD;
-const int scale;
-const int startX;
-const int startY;
-const int knob_precision;
-const int dark_green;
-const int light_green;
-const int ships[TOTAL_SHIPS];
+enum GAME_STATES
+{
+  RUNNING,
+  LOST,
+  WON
+};
 
-unsigned short *fb;
-font_descriptor_t *fdes;
+extern const int sizeX;
+extern const int sizeY;
+extern const int GRID_SIZE;
+extern const int BOX_COUNT;
+extern const int BOARD_LEN;
+extern const int BOX_SIZE;
+extern const int LINE_MOD;
+extern const int scale;
+extern const int startX;
+extern const int startY;
+extern const int knob_precision;
+extern const int dark_green;
+extern const int light_green;
+extern const int ships[TOTAL_SHIPS];
+
+extern unsigned short *fb;
+extern font_descriptor_t *fdes;
 #endif

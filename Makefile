@@ -7,15 +7,15 @@ CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 #LDLIBS = -lm
 
-SOURCES = main.c tcp.c peripheries.c constants.c utils.c mzapo_phys.c mzapo_parlcd.c
+SOURCES = tcp.c ui.c peripheries.c constants.c utils.c mzapo_phys.c mzapo_parlcd.c main.c 
 SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = main
-#TARGET_IP ?= 192.168.202.127
+TARGET_IP ?= 192.168.223.129
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?=192.168.0.59
+#TARGET_IP ?=192.168.223.129
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)

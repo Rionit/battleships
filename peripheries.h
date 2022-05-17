@@ -1,3 +1,5 @@
+#ifndef PERIPHERIES_H
+#define PERIPHERIES_H
 
 void setup_peripheries();
 void draw_lcd();
@@ -17,3 +19,5 @@ void turn_led_red();
 void turn_led_green();
 void turn_led_off();
 void warning_led(int color, int intensity, int n);
+
+#endif

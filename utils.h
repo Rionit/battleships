@@ -1,4 +1,5 @@
-#include "constants.h"
+#ifndef UTILS_H
+#define UTILS_H
 #include <stdbool.h>
 
 void highlight_box(int idxX, int idxY);
@@ -25,3 +26,4 @@ void draw_pixel(int x, int y, unsigned short color);
 void draw_pixel_big(int x, int y, unsigned short color);
 int char_width(int ch);
 void draw_char(int x, int y, char ch, unsigned short color);
+#endif
