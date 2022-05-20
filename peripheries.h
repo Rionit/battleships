@@ -1,3 +1,12 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  peripheries.h      - header file for working with MZ_APO peripheries
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #ifndef PERIPHERIES_H
 #define PERIPHERIES_H
 

@@ -1,5 +1,15 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  utils.h      - header file for utility helper functions
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #ifndef UTILS_H
 #define UTILS_H
+
 #include <stdbool.h>
 
 void highlight_box(int idxX, int idxY);

@@ -1,6 +1,15 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  ui.c      - c file for implementing game UI (main menu and game over screens)
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include "constants.h"
 #include "peripheries.h"
@@ -34,40 +43,10 @@ bool main_menu()
   while ((knobs & 0x7000000) != 0)
     knobs = get_knobs();
 
-  // TODO: SET IP? you can uncomment to see how it works rn
-  /*
-
-int number = 0;
-int last = 0;
-int cur = 0;
-
-// while button is not pressed
-while ((knobs & 0x7000000) == 0)
-{
-
-  knobs = get_knobs();
-  // choose player by rotating first knob in any direction
-  cur = (bool)((((knobs >> 16) & 0xff) / 27) % 2);
-  if (last != cur)
-  {
-    number = number + 1 > 9 ? 0 : number + 1;
-    last = cur;
-  }
-  draw_char(240, 158, number + '0', light_green);
-  draw_lcd();
-  clear_screen();
-
-} // WAIT FOR RELEASE
-while ((knobs & 0x7000000) != 0)
-  knobs = get_knobs();
-
-*/
-
   // draws text in top right corner
   draw_lcd();
   return player;
 }
-
 
 void game_over(int state)
 {

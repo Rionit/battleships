@@ -1,3 +1,12 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  tcp.c      - c file for implementing TCP protocol
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>

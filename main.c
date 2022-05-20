@@ -1,7 +1,9 @@
 /*******************************************************************
-  main.c      - main file
+  Battleships - semestral project on MZ_APO board.
 
-  TODO:
+  main.c      - main file controlling game state
+
+  Kryštof Gärtner, Filip Doležal
 
  *******************************************************************/
 
@@ -36,7 +38,7 @@ typedef struct
   int shipsLeftPlayer;
   int shipsLeftEnemy;
   bool player;
-} game_info;
+} game_info; // struct with all important game data
 
 void draw_board_enemy(game_info *info)
 {
@@ -44,6 +46,7 @@ void draw_board_enemy(game_info *info)
   highlight_box(info->curx, info->cury);
 }
 
+// draw ship in frame buffer from given ship length and rotation
 void redraw_ship(game_info *info, int length)
 {
   for (size_t i = 0; i < length; i++)
@@ -55,6 +58,7 @@ void redraw_ship(game_info *info, int length)
   }
 }
 
+// place ship on main players board
 void place_ship(game_info *info, int length)
 {
   printf("horizontal: %d", info->horizontal);
@@ -67,25 +71,29 @@ void place_ship(game_info *info, int length)
   }
 }
 
+// set cursor from given knob values
 int set_cursor(short *curKnob, short prevKnob, short *cur, bool modulate)
 {
-
+  // how much knob value changed
   int dif = prevKnob - *curKnob;
   if (dif > 200)
     dif = -(255 - (prevKnob - *curKnob));
   else if (dif < -200)
     dif = 255 - (*curKnob - prevKnob);
 
-  if (dif > knob_precision || dif < -knob_precision)
+  // knob value crossed the threshold ? -> new cursor position
+  if (dif > KNOB_PRECISION || dif < -KNOB_PRECISION)
   {
     *curKnob = prevKnob;
     if (modulate)
     {
+      // modulo cursor
       *cur = ((*cur + (dif > 0 ? -1 : +1)) % 10);
       *cur += *cur < 0 ? 10 : 0;
     }
     else
     {
+      // stop at the grid borders
       *cur = (*cur + (dif > 0 ? -1 : +1));
       *cur = *cur < 0 ? 0 : *cur;
       *cur = *cur > 9 ? 9 : *cur;
@@ -95,6 +103,7 @@ int set_cursor(short *curKnob, short prevKnob, short *cur, bool modulate)
   return false;
 }
 
+// check if ship can be placed in the current cursor position
 bool can_place(game_info *info, int length)
 {
   short x = info->curx;
@@ -107,7 +116,6 @@ bool can_place(game_info *info, int length)
     else
       y = info->cury + i;
 
-    // printf("x+i: %d, y+i: %d\n", x, y);
     bool l = (x - 1 >= 0) ? (info->board[y][x - 1] == SHIP) : false;
     bool r = (x + 1 <= 9) ? (info->board[y][x + 1] == SHIP) : false;
     bool b = (y + 1 <= 9) ? (info->board[y + 1][x] == SHIP) : false;
@@ -120,20 +128,22 @@ bool can_place(game_info *info, int length)
   return true;
 }
 
+// game state when player is choosing
+// where to place his ships on the board
 void place_ships(game_info *info)
 {
   for (size_t i = 0; i < TOTAL_SHIPS; i++)
   {
     info->curx = 0;
     info->cury = 0;
-    redraw_ship(info, ships[i]);
-    clear_place(0, 0, startX, startY + sizeY);
+    redraw_ship(info, SHIPS[i]);
+    clear_place(0, 0, STARTX, STARTY + SIZEY);
     draw_char(15, 15, (TOTAL_SHIPS - i) + '0', light_green);
     draw_lcd();
 
     uint32_t knobs = get_knobs();
     // break when knob is pressed and ship can be placed
-    while (((knobs & 0x7000000) == 0) || !can_place(info, ships[i]))
+    while (((knobs & 0x7000000) == 0) || !can_place(info, SHIPS[i]))
     {
       knobs = get_knobs();
       bool horizontal = (bool)((((knobs >> 16) & 0xff) / 27) % 2); // ship rotation
@@ -141,25 +151,26 @@ void place_ships(game_info *info)
       if (set_cursor(&(info->knobX), (knobs & 0xff), &(info->curx), false) || set_cursor(&(info->knobY), ((knobs >> 8) & 0xff), &(info->cury), false) || horizontal != info->horizontal)
       {
         // handle ship rotation
-        if(info->horizontal != horizontal){
+        if (info->horizontal != horizontal)
+        {
           info->horizontal = horizontal;
-          if (!horizontal && info->cury + ships[i] >= BOX_COUNT)
-            info->cury = info->cury - (info->cury + ships[i] - BOX_COUNT);
-          if (horizontal && info->curx + ships[i] >= BOX_COUNT)
-            info->curx = info->curx - (info->curx + ships[i] - BOX_COUNT);
+          if (!horizontal && info->cury + SHIPS[i] >= BOX_COUNT)
+            info->cury = info->cury - (info->cury + SHIPS[i] - BOX_COUNT);
+          if (horizontal && info->curx + SHIPS[i] >= BOX_COUNT)
+            info->curx = info->curx - (info->curx + SHIPS[i] - BOX_COUNT);
         }
         // Block moving when ship touches the border
-        if (!horizontal && info->cury + ships[i] >= BOX_COUNT)
+        if (!horizontal && info->cury + SHIPS[i] >= BOX_COUNT)
           info->cury--;
-        if (horizontal && info->curx + ships[i] >= BOX_COUNT)
+        if (horizontal && info->curx + SHIPS[i] >= BOX_COUNT)
           info->curx--;
-         
+
         draw_board(info->board);
-        redraw_ship(info, ships[i]);
+        redraw_ship(info, SHIPS[i]);
         draw_lcd();
       }
     }
-    place_ship(info, ships[i]);
+    place_ship(info, SHIPS[i]);
     draw_board(info->board);
 
     // wait for player to unpress the knob
@@ -168,31 +179,33 @@ void place_ships(game_info *info)
     }
     delay(10);
   }
-  clear_place(0, 0, startX, startY + sizeY);
-  draw_char(15, 15, '0', light_green);  
+  clear_place(0, 0, STARTX, STARTY + SIZEY);
+  draw_char(15, 15, '0', light_green);
   draw_lcd();
   send_ready();
 }
 
-
+// shows players and board and waits for enemy to shoot
 int player_state(game_info *info)
 {
   draw_string(480 - string_width(0, info->player ? p1 : p2), 12, info->player ? p1 : p2, light_green);
-  clear_place(0, 0, startX, startY + sizeY);
+  clear_place(0, 0, STARTX, STARTY + SIZEY);
   draw_char(15, 15, info->shipsLeftPlayer + '0', light_green);
   printf("entered player state\n");
   draw_board(info->board);
   draw_lcd();
   short shotx, shoty;
+  // receive info where enemy shot
   receive_coords(&shotx, &shoty);
 
   int *cell = &(info->board[shoty][shotx]);
   led_line_left();
+  // react to enemy shot
   if (*cell == SHIP && flood_filled(info->board, shotx, shoty))
   {
     printf("Naše loď potopena!\n");
     info->shipsLeftPlayer--;
-    clear_place(0, 0, startX, startY + sizeY);
+    clear_place(0, 0, STARTX, STARTY + SIZEY);
     draw_char(15, 15, info->shipsLeftPlayer + '0', light_green);
   }
   else if (*cell == SHIP)
@@ -205,25 +218,27 @@ int player_state(game_info *info)
     *cell = SEA_HIT;
     printf("HAHAHA!!! Vedle jak ta jedle!\n");
   }
-  send_response(*cell);
+  send_response(*cell); // send enemy response
 
   draw_board(info->board);
   draw_lcd();
   react_to_cell(*cell, false);
 
   printf("leaving player state\n");
-  clear_place(startX + GRID_SIZE + 1, 0, sizeX, sizeY);
+  clear_place(STARTX + GRID_SIZE + 1, 0, SIZEX, SIZEY);
   // 0 ships left?
   if (info->shipsLeftPlayer <= 0)
     return LOST;
   return RUNNING;
 }
 
+// state where enemies board is on the screen
+// and player has to choose where to shoot
 int enemy_state(game_info *info)
 {
   printf("entered enemy state\n");
   draw_string(480 - string_width(0, info->player ? p2 : p1), 12, info->player ? p2 : p1, light_green);
-  clear_place(0, 0, startX, startY + sizeY);
+  clear_place(0, 0, STARTX, STARTY + SIZEY);
   draw_char(15, 15, info->shipsLeftEnemy + '0', light_green);
   draw_board_enemy(info);
   draw_lcd();
@@ -257,7 +272,7 @@ int enemy_state(game_info *info)
       {
         flood_filled(info->boardEnemy, info->curx, info->cury);
         info->shipsLeftEnemy--;
-        clear_place(0, 0, startX, startY + sizeY);
+        clear_place(0, 0, STARTX, STARTY + SIZEY);
         draw_char(15, 15, info->shipsLeftEnemy + '0', light_green);
       }
       draw_board_enemy(info);
@@ -266,19 +281,19 @@ int enemy_state(game_info *info)
     }
   }
   printf("leaving enemy state\n");
-  clear_place(startX + GRID_SIZE + 1, 0, sizeX, sizeY);
+  clear_place(STARTX + GRID_SIZE + 1, 0, SIZEX, SIZEY);
   // 0 ships left?
   if (info->shipsLeftEnemy <= 0)
     return WON;
   return RUNNING;
 }
 
+// initialize all needed variables
 game_info init()
 {
   setup_peripheries();
   fb = (unsigned short *)malloc(320 * 480 * 2);
-  fdes = &font_rom8x16;
-
+  // init game boards
   int *gameBoard_p = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));
   int(*board)[BOARD_LEN] = (int(*)[BOARD_LEN])gameBoard_p;
   int *gameBoard_p2 = malloc(BOARD_LEN * BOARD_LEN * sizeof(int));

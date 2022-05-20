@@ -43,6 +43,14 @@
         "ostream": "c",
         "socket.h": "c",
         "unistd.h": "c",
-        "mzapo_regs.h": "c"
-    }
+        "mzapo_regs.h": "c",
+        "stdio.h": "c"
+    },
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/lemonek/cvut-linux/APO/battleship-semestral",
+            "binaryPath": "/home/lemonek/cvut-linux/APO/battleship-semestral/main",
+            "binaryArgs": []
+        }
+    ]
 }

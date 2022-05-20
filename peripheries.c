@@ -1,6 +1,16 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  peripheries.c      - c file for working with MZ_APO peripheries
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "utils.h"
 #include "constants.h"

@@ -1,3 +1,12 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  tcp.h      - header file for implementing TCP protocol
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #ifndef TCP_H
 #define TCP_H
 

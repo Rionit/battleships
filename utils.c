@@ -1,3 +1,12 @@
+/*******************************************************************
+  Battleships - semestral project on MZ_APO board.
+
+  utils.c      - c file for utility helper functions
+
+  Kryštof Gärtner, Filip Doležal
+
+ *******************************************************************/
+
 #include "constants.h"
 #include "font_types.h"
 #include <stdio.h>
@@ -6,6 +15,8 @@
 #include <string.h>
 #include <time.h>
 
+font_descriptor_t *fdes = &font_rom8x16;
+
 int get_coord(int start, int idx)
 {
     return start + (idx + 1) + idx * BOX_SIZE;
@@ -13,17 +24,17 @@ int get_coord(int start, int idx)
 
 int get_coord_x(int idx)
 {
-    return get_coord(startX, idx);
+    return get_coord(STARTX, idx);
 }
 
 int get_coord_y(int idx)
 {
-    return get_coord(startY, idx);
+    return get_coord(STARTY, idx);
 }
 
 void draw_pixel(int x, int y, unsigned short color)
 {
-    fb[(x % sizeX) + sizeX * (y % sizeY)] = color;
+    fb[(x % SIZEX) + SIZEX * (y % SIZEY)] = color;
 }
 
 void highlight_box(int idxX, int idxY)
@@ -72,9 +83,9 @@ void draw_board(int (*board)[10])
 void draw_pixel_big(int x, int y, unsigned short color)
 {
     int i, j;
-    for (i = 0; i < scale; i++)
+    for (i = 0; i < SCALE; i++)
     {
-        for (j = 0; j < scale; j++)
+        for (j = 0; j < SCALE; j++)
         {
             draw_pixel(x + i, y + j, color);
         }
@@ -113,7 +124,7 @@ void draw_char(int x, int y, char ch, unsigned short color)
             for (j = 0; j < w; j++)
             {
                 if ((val & 0x8000) != 0)
-                    draw_pixel_big(x + scale * j, y + scale * i, color);
+                    draw_pixel_big(x + SCALE * j, y + SCALE * i, color);
                 val <<= 1;
             }
             ptr++;
@@ -155,7 +166,7 @@ void draw_grid()
         for (int x = 0; x < GRID_SIZE; x++)
         {
             unsigned int color = x % LINE_MOD && y % LINE_MOD ? SEA : SHIP;
-            draw_pixel(startX + x, startY + y, color);
+            draw_pixel(STARTX + x, STARTY + y, color);
         }
     }
 }
@@ -166,9 +177,9 @@ void draw_grid_chars()
     fdes = &font_rom8x16;
     for (int x = 1; x < 11; x++)
     {
-        draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * scale / 2) + scale, get_coord_y(0) - 1, first_row[x - 1], light_green);
-        draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * scale / 2) - scale,
-                  get_coord_y(x) + (BOX_SIZE / 2) - (16 * scale / 2) + scale, (char)(x + 47), light_green);
+        draw_char(get_coord_x(x) + (BOX_SIZE / 2) - (char_width(first_row[x - 1]) * SCALE / 2) + SCALE, get_coord_y(0) - 1, first_row[x - 1], light_green);
+        draw_char(get_coord_x(0) + (char_width((char)(x + 47)) * SCALE / 2) - SCALE,
+                  get_coord_y(x) + (BOX_SIZE / 2) - (16 * SCALE / 2) + SCALE, (char)(x + 47), light_green);
     }
 }
 
