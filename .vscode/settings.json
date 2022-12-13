@@ -1,0 +1,56 @@
+{
+    "cSpell.words": [
+        "ABCDEFGHIJ",
+        "barvu",
+        "endx",
+        "endy",
+        "HORIZONTALNI",
+        "incx",
+        "jedle",
+        "JSEM",
+        "Knobx",
+        "Knoby",
+        "KRON",
+        "kurva",
+        "ledky",
+        "leds",
+        "menim",
+        "modry",
+        "Naše",
+        "Porazil",
+        "pozici",
+        "prevx",
+        "prevy",
+        "shotx",
+        "shoty",
+        "SPILED",
+        "startx",
+        "starty",
+        "textp",
+        "unpress",
+        "urcuje",
+        "Vedle",
+        "VERTIKALNI",
+        "vracim",
+        "YAAAY",
+        "zasažena"
+    ],
+    "files.associations": {
+        "font_types.h": "c",
+        "string_view": "c",
+        "constants.h": "c",
+        "istream": "c",
+        "ostream": "c",
+        "socket.h": "c",
+        "unistd.h": "c",
+        "mzapo_regs.h": "c",
+        "stdio.h": "c"
+    },
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/lemonek/cvut-linux/APO/battleship-semestral",
+            "binaryPath": "/home/lemonek/cvut-linux/APO/battleship-semestral/main",
+            "binaryArgs": []
+        }
+    ]
+}
