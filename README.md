@@ -13,10 +13,10 @@ The [documentation folder](https://github.com/lmnek/battleships/tree/main/dokume
 ## Manual
 I have also created this manual as part of the assignement.
 
-[manual]("https://github.com/Rionit/battleships/blob/main/battleships_manual.png")
+![manual]("https://github.com/Rionit/battleships/blob/main/battleships_manual.png")
 
 ## Video
 Here is a showcase how it worked on two MZ_APO boards.
 
-![video]("https://github.com/user-attachments/assets/5a7e73c3-579f-4dab-a390-e15e67024708")
+https://github.com/user-attachments/assets/5a7e73c3-579f-4dab-a390-e15e67024708
 
