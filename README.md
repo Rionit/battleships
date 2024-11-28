@@ -1,7 +1,7 @@
 # Battleships
 https://github.com/user-attachments/assets/5a7e73c3-579f-4dab-a390-e15e67024708
 
-This is a semestral project for my university Computer architecture course and I worked on it in pair with [Rionit](https://github.com/Rionit). 
+This is a semestral project for my university Computer architecture course and I worked on it in pair with [lmnek](https://github.com/lmnek). 
 The project is written in the **C** language and uses the [MZ_APO](https://github.com/lmnek/battleships/tree/main/dokumentace) microcontroller. 
 The topic is the game Battleships for two players, each playing on their microcontroller and communicating using the **TCP** protocol. 
 The peripherals used are an LCD, rotary knobs, RGB LEDs, and a row of LEDs. 
