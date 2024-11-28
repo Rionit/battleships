@@ -8,6 +8,7 @@ The peripherals used are an LCD, rotary knobs, RGB LEDs, and a row of LEDs.
 The [documentation folder](https://github.com/lmnek/battleships/tree/main/dokumentace) includes a player's manual and state diagrams (in Czech).
 
 ## Manual
+Here is a manual that I made as part of the assignment.
 
 ![https://github.com/Rionit/battleships/blob/main/battleships_manual.png](https://github.com/Rionit/battleships/blob/main/battleships_manual.png)
 
