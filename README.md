@@ -13,7 +13,7 @@ The [documentation folder](https://github.com/lmnek/battleships/tree/main/dokume
 ## Manual
 I have also created this manual as part of the assignement.
 
-[manual](https://github.com/Rionit/battleships/blob/main/battleships_manual.png)
+[https://github.com/Rionit/battleships/blob/main/battleships_manual.png](https://github.com/Rionit/battleships/blob/main/battleships_manual.png)
 
 ## Video
 Here is a showcase how it worked on two MZ_APO boards.
